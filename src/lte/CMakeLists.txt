@@ -151,6 +151,7 @@ set(source_files
     model/mc-enb-pdcp.cc
     model/mc-ue-pdcp.cc
     helper/retx-stats-calculator.cc
+    helper/mmwave-bearer-stats-calculator.cc
     helper/mac-tx-stats-calculator.cc
 )
 
@@ -349,6 +350,7 @@ set(header_files
     model/component-carrier.h
     model/component-carrier-ue.h
     model/component-carrier-enb.h
+    helper/mmwave-bearer-stats-calculator.h
 )
 
 build_lib(
@@ -366,6 +368,7 @@ build_lib(
     ${libpoint-to-point}
     ${libapplications}
     ${libinternet}
+    ${liboran-interface}
     ${libcsma}
     ${libconfig-store}
   TEST_SOURCES ${test_sources}
