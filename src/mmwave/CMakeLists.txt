@@ -2,7 +2,6 @@ set(source_files
     helper/mmwave-helper.cc
     helper/mmwave-phy-trace.cc
     helper/mmwave-point-to-point-epc-helper.cc
-    helper/mmwave-bearer-stats-calculator.cc
     helper/mmwave-bearer-stats-connector.cc
     helper/mc-stats-calculator.cc
     helper/core-network-stats-calculator.cc
@@ -82,7 +81,6 @@ set(header_files
     helper/mmwave-helper.h
     helper/mmwave-phy-trace.h
     helper/mmwave-point-to-point-epc-helper.h
-    helper/mmwave-bearer-stats-calculator.h
     helper/mc-stats-calculator.h
     helper/core-network-stats-calculator.h
     helper/mmwave-bearer-stats-connector.h
@@ -154,5 +152,6 @@ build_lib(
     ${libinternet}
     ${liblte}
     ${libpropagation}
+    ${liboran-interface}
   TEST_SOURCES ${test_sources}
 )
