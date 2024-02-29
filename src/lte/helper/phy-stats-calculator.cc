@@ -54,17 +54,17 @@ PhyStatsCalculator::GetTypeId(void)
             .SetParent<LteStatsCalculator>()
             .SetGroupName("Lte")
             .AddConstructor<PhyStatsCalculator>()
-            .AddAttribute("DlRsrpSinrFilename",
+            .AddAttribute("LteDlRsrpSinrFilename",
                           "Name of the file where the RSRP/SINR statistics will be saved.",
                           StringValue("DlRsrpSinrStats.txt"),
                           MakeStringAccessor(&PhyStatsCalculator::SetCurrentCellRsrpSinrFilename),
                           MakeStringChecker())
-            .AddAttribute("UlSinrFilename",
+            .AddAttribute("LteUlSinrFilename",
                           "Name of the file where the UE SINR statistics will be saved.",
                           StringValue("UlSinrStats.txt"),
                           MakeStringAccessor(&PhyStatsCalculator::SetUeSinrFilename),
                           MakeStringChecker())
-            .AddAttribute("UlInterferenceFilename",
+            .AddAttribute("LteUlInterferenceFilename",
                           "Name of the file where the interference statistics will be saved.",
                           StringValue("UlInterferenceStats.txt"),
                           MakeStringAccessor(&PhyStatsCalculator::SetInterferenceFilename),
@@ -240,16 +240,16 @@ PhyStatsCalculator::ReportCurrentCellRsrpSinrCallback(Ptr<PhyStatsCalculator> ph
 {
     NS_LOG_FUNCTION(phyStats << path);
     uint64_t imsi = 0;
-    std::string pathUePhy = path.substr(0, path.find("/ComponentCarrierMapUe"));
-    if (phyStats->ExistsImsiPath(pathUePhy) == true)
-    {
-        imsi = phyStats->GetImsiPath(pathUePhy);
-    }
-    else
-    {
-        imsi = FindImsiFromLteNetDevice(pathUePhy);
-        phyStats->SetImsiPath(pathUePhy, imsi);
-    }
+    // std::string pathUePhy = path.substr(0, path.find("/ComponentCarrierMapUe"));
+    // if (phyStats->ExistsImsiPath(pathUePhy) == true)
+    // {
+    //     imsi = phyStats->GetImsiPath(pathUePhy);
+    // }
+    // else
+    // {
+    //     imsi = FindImsiFromLteNetDevice(pathUePhy);
+    //     phyStats->SetImsiPath(pathUePhy, imsi);
+    // }
 
     phyStats->ReportCurrentCellRsrpSinr(cellId, imsi, rnti, rsrp, sinr, componentCarrierId);
 }
@@ -265,19 +265,19 @@ PhyStatsCalculator::ReportUeSinr(Ptr<PhyStatsCalculator> phyStats,
     NS_LOG_FUNCTION(phyStats << path);
 
     uint64_t imsi = 0;
-    std::ostringstream pathAndRnti;
-    pathAndRnti << path << "/" << rnti;
-    std::string pathEnbMac = path.substr(0, path.find("/ComponentCarrierMap"));
-    pathEnbMac += "/LteEnbMac/DlScheduling";
-    if (phyStats->ExistsImsiPath(pathAndRnti.str()) == true)
-    {
-        imsi = phyStats->GetImsiPath(pathAndRnti.str());
-    }
-    else
-    {
-        imsi = FindImsiFromEnbMac(pathEnbMac, rnti);
-        phyStats->SetImsiPath(pathAndRnti.str(), imsi);
-    }
+    // std::ostringstream pathAndRnti;
+    // pathAndRnti << path << "/" << rnti;
+    // std::string pathEnbMac = path.substr(0, path.find("/ComponentCarrierMap"));
+    // pathEnbMac += "/LteEnbMac/DlScheduling";
+    // if (phyStats->ExistsImsiPath(pathAndRnti.str()) == true)
+    // {
+    //     imsi = phyStats->GetImsiPath(pathAndRnti.str());
+    // }
+    // else
+    // {
+    //     imsi = FindImsiFromEnbMac(pathEnbMac, rnti);
+    //     phyStats->SetImsiPath(pathAndRnti.str(), imsi);
+    // }
 
     phyStats->ReportUeSinr(cellId, imsi, rnti, sinrLinear, componentCarrierId);
 }
