@@ -35,6 +35,9 @@
 #include <map>
 #include <vector>
 
+#include <ns3/oran-interface.h>
+#include "ns3/mmwave-bearer-stats-calculator.h"
+
 namespace ns3
 {
 
@@ -216,6 +219,17 @@ class LteEnbNetDevice : public LteNetDevice
 
     std::map<uint8_t, Ptr<ComponentCarrierEnb>> GetCcMap(void);
 
+    void SetE2Termination (Ptr<E2Termination> e2term);
+
+    Ptr<E2Termination> GetE2Termination() const;
+
+    void BuildAndSendReportMessage(E2Termination::RicSubscriptionRequest_rval_s params);
+
+    void KpmSubscriptionCallback (E2AP_PDU_t* sub_req_pdu);
+    void ControlMessageReceivedCallback (E2AP_PDU_t* sub_req_pdu);
+
+    void SetStartTime (uint64_t);
+
   protected:
     // inherited from Object
     virtual void DoInitialize(void);
@@ -235,6 +249,12 @@ class LteEnbNetDevice : public LteNetDevice
      * the LteEnbNetDevice.
      */
     void UpdateConfig();
+
+    Ptr<KpmIndicationHeader> BuildRicIndicationHeader(std::string plmId, std::string gnbId, uint16_t nrCellId);
+    Ptr<KpmIndicationMessage> BuildRicIndicationMessageCuUp(std::string plmId);
+    Ptr<KpmIndicationMessage> BuildRicIndicationMessageCuCp(std::string plmId);
+    std::string GetImsiString(uint64_t imsi);
+    void ReadControlFile ();
 
     Ptr<LteEnbRrc> m_rrc; ///< the RRC
 
@@ -264,6 +284,26 @@ class LteEnbNetDevice : public LteNetDevice
 
     Ptr<LteEnbComponentCarrierManager>
         m_componentCarrierManager; ///< the component carrier manager of this eNb
+
+    Ptr<E2Termination> m_e2term;
+    Ptr<mmwave::MmWaveBearerStatsCalculator> m_e2PdcpStatsCalculator;
+    Ptr<mmwave::MmWaveBearerStatsCalculator> m_e2RlcStatsCalculator;
+
+    double m_e2Periodicity;
+
+    bool m_sendCuUp;
+    bool m_sendCuCp;
+    uint64_t m_startTime;
+    bool m_isReportingEnabled; //! true is KPM reporting cycle is active, false otherwise
+
+    bool m_reducedPmValues; //< if true use a reduced subset of pmvalues
+    bool m_forceE2FileLogging; //< if true log PMs to files
+
+    std::string m_cuUpFileName;
+    std::string m_cuCpFileName;
+
+    std::string m_controlFilename;
+    int m_lastValidTimestamp {0};
 
 }; // end of class LteEnbNetDevice
 

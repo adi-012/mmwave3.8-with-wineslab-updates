@@ -371,6 +371,7 @@ build_lib(
     ${liboran-interface}
     ${libcsma}
     ${libconfig-store}
+    ${liboran-interface}
   TEST_SOURCES ${test_sources}
   MODULE_ENABLED_FEATURES ${emu_features}
 )
