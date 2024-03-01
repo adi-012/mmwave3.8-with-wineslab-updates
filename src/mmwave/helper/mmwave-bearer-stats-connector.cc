@@ -34,7 +34,7 @@
 
 #include "ns3/mmwave-bearer-stats-connector.h"
 
-#include "mmwave-bearer-stats-calculator.h"
+#include "ns3/mmwave-bearer-stats-calculator.h"
 
 #include "ns3/nstime.h"
 #include "ns3/string.h"
@@ -1360,7 +1360,7 @@ MmWaveBearerStatsConnector::ConnectSecondaryTracesEnb(std::string context,
             // for MC devices
             Config::ConnectFailSafe (basePath.str () + "/DataRadioRlcMap/*/LteRlc/RxPDU",
                          MakeBoundCallback (&UlRxPduCallback, arg));
-            onfig::ConnectFailSafe (basePath.str () + "/DataRadioRlcMap/*/LteRlc/TxPDU",
+            Config::ConnectFailSafe (basePath.str () + "/DataRadioRlcMap/*/LteRlc/TxPDU",
                          MakeBoundCallback (&DlTxPduCallback, arg));
         }
     }
