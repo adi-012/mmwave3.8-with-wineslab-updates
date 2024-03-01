@@ -218,7 +218,7 @@ MmWaveHelper::GetTypeId(void)
                           "The next value will be the first cellId",
                           UintegerValue(1),
                           MakeUintegerAccessor(&MmWaveHelper::SetBasicCellId,
-                                               &MwWaveHelper::GetBasicCellId),
+                                               &MmWaveHelper::GetBasicCellId),
                           MakeUintegerChecker<uint16_t>())
             .AddAttribute("BasicImsi",
                           "The next value will be the first imsi",
@@ -274,7 +274,7 @@ MmWaveHelper::GetTypeId(void)
                           "If it is more than one and m_lteUseCa is false, it will raise an error ",
                           UintegerValue(1),
                           MakeUintegerAccessor(&MmWaveHelper::m_noOfLteCcs),
-                          MakeUintegerChecker<uint16_t>(MIN_NO_CC, MAX_NO_CC));
+                          MakeUintegerChecker<uint16_t>(MIN_NO_CC, MAX_NO_CC))
             .AddAttribute ("E2ModeNr",
                           "If true, enable reporting over E2 for NR cells.",
                            BooleanValue (false),
@@ -299,7 +299,7 @@ MmWaveHelper::GetTypeId(void)
                            "The first port number for the local bind",
                            UintegerValue (38470),
                            MakeUintegerAccessor (&MmWaveHelper::m_e2localPort),
-                           MakeUintegerChecker<uint16_t> ())
+                           MakeUintegerChecker<uint16_t> ());
 
     return tid;
 }
@@ -3170,7 +3170,7 @@ MmWaveHelper::GetPdcpStats(void)
 void
 MmWaveHelper::EnableE2PdcpTraces (void)
 {
-    if (m_e2PdcpStats == 0 && (m_e2mode_nr || m_e2mode_lte))
+    if ((!m_e2PdcpStats) && (m_e2mode_nr || m_e2mode_lte))
     {
         m_e2PdcpStats = CreateObject<MmWaveBearerStatsCalculator> ("E2PDCP");
         m_e2PdcpStats->SetAttribute("DlPdcpOutputFilename", StringValue("DlE2PdcpStats.txt"));
@@ -3200,7 +3200,7 @@ MmWaveHelper::GetE2PdcpStats (void)
 void
 MmWaveHelper::EnableE2RlcTraces(void)
 {
-    if (m_e2RlcStats == 0 && (m_e2mode_nr || m_e2mode_lte))
+    if ((!m_e2RlcStats) && (m_e2mode_nr || m_e2mode_lte))
     {
         m_e2RlcStats = CreateObject<MmWaveBearerStatsCalculator> ("E2RLC");
         m_e2RlcStats->SetAttribute("DlPdcpOutputFilename", StringValue("DlE2RlcStats.txt"));

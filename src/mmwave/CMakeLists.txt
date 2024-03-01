@@ -77,6 +77,8 @@ set(test_sources
     test/mmwave-l2sm-test.cc
 )
 
+include_directories(/usr/include/e2sim)
+
 set(header_files
     helper/mmwave-helper.h
     helper/mmwave-phy-trace.h
