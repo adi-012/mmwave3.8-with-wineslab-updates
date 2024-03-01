@@ -57,7 +57,7 @@
 #include <ns3/uinteger.h>
 #include <ns3/lte-radio-bearer-info.h>
 #include <cstdint>
-#include "encode_e2apv1.hpp"
+#include <encode_e2apv1.hpp>
 #include <fstream>
 #include <sstream>
 #include <ns3/lte-indication-message-helper.h>
@@ -296,7 +296,7 @@ LteEnbNetDevice::GetTypeId(void)
                 BooleanValue(false),
                 MakeBooleanAccessor(&LteEnbNetDevice::SetCsgIndication,
                                     &LteEnbNetDevice::GetCsgIndication),
-                MakeBooleanChecker());
+                MakeBooleanChecker())
             .AddAttribute ("E2Termination",
                    "The E2 termination object associated to this node",
                    PointerValue (),

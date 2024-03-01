@@ -60,7 +60,7 @@
 
 #include <ns3/mmwave-indication-message-helper.h>
 
-#include "encode_e2apv1.hpp"
+#include <e2encode_e2apv1.hpp>
 
 namespace ns3
 {

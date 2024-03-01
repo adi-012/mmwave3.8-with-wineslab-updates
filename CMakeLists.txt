@@ -118,6 +118,7 @@ if(${NS3_CCACHE})
     )
   endif()
 endif()
+include_directories(/usr/include/e2sim)
 
 # Include macros used below
 include(build-support/macros-and-definitions.cmake)
