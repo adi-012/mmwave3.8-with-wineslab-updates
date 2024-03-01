@@ -344,7 +344,7 @@ LteEnbNetDevice::GetTypeId(void)
                    "TS: Contains multiple lines with ts, imsi, targetCellId\n",
                    StringValue(""),
                    MakeStringAccessor (&LteEnbNetDevice::m_controlFilename),
-                   MakeStringChecker())
+                   MakeStringChecker());
     return tid;
 }
 

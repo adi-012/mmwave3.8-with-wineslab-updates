@@ -68,7 +68,7 @@ McPdcpSpecificLteRlcSapUser::ReceivePdcpPdu(Ptr<Packet> p)
 NS_OBJECT_ENSURE_REGISTERED(McEnbPdcp);
 
 McEnbPdcp::McEnbPdcp()
-    : : m_pdcpSapUser (0),
+    : m_pdcpSapUser (0),
       m_rlcSapProvider (0),
       m_rnti (0),
       m_lcid (0),
