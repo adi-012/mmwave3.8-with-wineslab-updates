@@ -202,7 +202,7 @@ UeManager::DoInitialize()
         rlc->SetLteMacSapProvider(m_rrc->m_macSapProvider);
         rlc->SetRnti(m_rnti);
         rlc->SetLcId(lcid);
-        rlc->SetImse(m_imsi);
+        rlc->SetImsi(m_imsi);
 
         m_srb0 = CreateObject<LteSignalingRadioBearerInfo>();
         m_srb0->m_rlc = rlc;
@@ -239,7 +239,7 @@ UeManager::DoInitialize()
         rlc->SetLteMacSapProvider(m_rrc->m_macSapProvider);
         rlc->SetRnti(m_rnti);
         rlc->SetLcId(lcid);
-        rlc->SetImse(m_imsi);
+        rlc->SetImsi(m_imsi);
 
         Ptr<LtePdcp> pdcp = CreateObject<LtePdcp>();
         pdcp->SetRnti(m_rnti);
@@ -479,7 +479,7 @@ UeManager::SetupDataRadioBearer(EpsBearer bearer,
     Ptr<LteRlc> rlc = rlcObjectFactory.Create()->GetObject<LteRlc>();
     rlc->SetLteMacSapProvider(m_rrc->m_macSapProvider);
     rlc->SetRnti(m_rnti);
-    rlc->SetImse(m_imsi);
+    rlc->SetImsi(m_imsi);
 
     drbInfo->m_rlc = rlc;
 
@@ -1489,7 +1489,7 @@ UeManager::RecvRlcSetupRequest(EpcX2SapUser::RlcSetupRequest params) // TODO onl
         NS_LOG_INFO("Created rlc " << rlc);
         rlc->SetLteMacSapProvider(m_rrc->m_macSapProvider);
         rlc->SetRnti(m_rnti);
-        rlc->SetImse(m_imsi);
+        rlc->SetImsi(m_imsi);
 
         rlcInfo->m_rlc = rlc;
 

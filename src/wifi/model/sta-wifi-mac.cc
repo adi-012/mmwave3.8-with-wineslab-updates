@@ -40,6 +40,7 @@
 #include "ns3/string.h"
 
 #include <numeric>
+#include <iterator>
 
 namespace ns3
 {

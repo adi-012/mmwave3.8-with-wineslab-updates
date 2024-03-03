@@ -60,7 +60,7 @@
 
 #include <ns3/mmwave-indication-message-helper.h>
 
-#include "encode_e2apv1.hpp"
+#include <encode_e2apv1.hpp>
 
 namespace ns3
 {
@@ -388,7 +388,7 @@ MmWaveEnbNetDevice::UpdateConfig(void)
 
                       // trigger E2Termination activation for when the simulation starts
           // schedule at start time
-          if (m_e2term != 0)
+          if (m_e2term)
             {
               NS_LOG_DEBUG("E2sim start in cell " << m_cellId 
                 << " force CSV logging " << m_forceE2FileLogging);              
@@ -864,15 +864,15 @@ MmWaveEnbNetDevice::BuildRicIndicationMessageCuCp(std::string plmId)
 uint32_t 
 MmWaveEnbNetDevice::GetRlcBufferOccupancy(Ptr<LteRlc> rlc) const
 {
-  if (DynamicCast<LteRlcAm>(rlc) != 0)
+  if (DynamicCast<LteRlcAm>(rlc))
   {
     return DynamicCast<LteRlcAm>(rlc)->GetTxBufferSize(); 
   }
-  else if(DynamicCast<LteRlcUm>(rlc) != 0)
+  else if(DynamicCast<LteRlcUm>(rlc))
   {
     return DynamicCast<LteRlcUm>(rlc)->GetTxBufferSize(); 
   }
-  else if(DynamicCast<LteRlcUmLowLat>(rlc) != 0)
+  else if(DynamicCast<LteRlcUmLowLat>(rlc))
   {
     return DynamicCast<LteRlcUmLowLat>(rlc)->GetTxBufferSize(); 
   }
