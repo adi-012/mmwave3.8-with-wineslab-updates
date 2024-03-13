@@ -22,6 +22,19 @@
 #include "ns3/val-array.h"
 
 /**
+ * \defgroup valArray-tests ValArray tests
+ * \ingroup core-tests
+ * \ingroup Matrices
+ */
+
+/**
+ * \file
+ * \ingroup valArray-tests
+ * ValArray test suite
+ */
+
+/**
+ * \file
  * \ingroup core-tests
  */
 
@@ -33,6 +46,8 @@ namespace tests
 NS_LOG_COMPONENT_DEFINE("ValArrayTest");
 
 /**
+ * @ingroup valArray-tests
+ *
  * @brief ValArray test case for testing ValArray class
  *
  * @tparam T the template parameter that can be a complex number, double or int
@@ -42,21 +57,21 @@ class ValArrayTestCase : public TestCase
 {
   public:
     /** Default constructor*/
-    ValArrayTestCase<T>() = default;
+    ValArrayTestCase() = default;
     /**
      * Constructor
      *
      * \param [in] name reference name
      */
-    ValArrayTestCase<T>(const std::string name);
+    ValArrayTestCase(const std::string& name);
 
     /** Destructor. */
-    ~ValArrayTestCase<T>() override;
+    ~ValArrayTestCase() override;
     /**
      * \brief Copy constructor.
      * Instruct the compiler to generate the implicitly declared copy constructor
      */
-    ValArrayTestCase<T>(const ValArrayTestCase<T>&) = default;
+    ValArrayTestCase(const ValArrayTestCase<T>&) = default;
     /**
      * \brief Copy assignment operator.
      * Instruct the compiler to generate the implicitly declared copy assignment operator.
@@ -67,7 +82,7 @@ class ValArrayTestCase : public TestCase
      * \brief Move constructor.
      * Instruct the compiler to generate the implicitly declared move constructor
      */
-    ValArrayTestCase<T>(ValArrayTestCase<T>&&) = default;
+    ValArrayTestCase(ValArrayTestCase<T>&&) = default;
     /**
      * \brief Move assignment operator.
      * Instruct the compiler to generate the implicitly declared copy constructor
@@ -80,13 +95,13 @@ class ValArrayTestCase : public TestCase
 };
 
 template <class T>
-ValArrayTestCase<T>::ValArrayTestCase(const std::string name)
+ValArrayTestCase<T>::ValArrayTestCase(const std::string& name)
     : TestCase(name)
 {
 }
 
 template <class T>
-ValArrayTestCase<T>::~ValArrayTestCase<T>()
+ValArrayTestCase<T>::~ValArrayTestCase()
 {
 }
 
@@ -95,9 +110,9 @@ void
 ValArrayTestCase<T>::DoRun()
 {
     ValArray<T> v1 = ValArray<T>(2, 3);
-    for (uint16_t i = 0; i < v1.GetNumRows(); ++i)
+    for (size_t i = 0; i < v1.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v1.GetNumCols(); ++j)
+        for (size_t j = 0; j < v1.GetNumCols(); ++j)
         {
             v1(i, j) = 1;
         }
@@ -108,9 +123,9 @@ ValArrayTestCase<T>::DoRun()
     NS_TEST_ASSERT_MSG_EQ(v1.GetNumCols(), v2.GetNumCols(), "The number of cols are not equal.");
 
     // test copy constructor
-    for (uint16_t i = 0; i < v1.GetNumRows(); ++i)
+    for (size_t i = 0; i < v1.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v1.GetNumCols(); ++j)
+        for (size_t j = 0; j < v1.GetNumCols(); ++j)
         {
             NS_TEST_ASSERT_MSG_EQ(v1(i, j), v2(i, j), "The elements are not equal.");
         }
@@ -120,9 +135,9 @@ ValArrayTestCase<T>::DoRun()
     ValArray<T> v3 = v1;
     NS_TEST_ASSERT_MSG_EQ(v1.GetNumRows(), v3.GetNumRows(), "The number of rows are not equal.");
     NS_TEST_ASSERT_MSG_EQ(v1.GetNumCols(), v3.GetNumCols(), "The number of cols are not equal.");
-    for (uint16_t i = 0; i < v1.GetNumRows(); ++i)
+    for (size_t i = 0; i < v1.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v1.GetNumCols(); ++j)
+        for (size_t j = 0; j < v1.GetNumCols(); ++j)
         {
             NS_TEST_ASSERT_MSG_EQ(v1(i, j), v2(i, j), "The elements are not equal.");
         }
@@ -136,9 +151,9 @@ ValArrayTestCase<T>::DoRun()
     v4 = std::move(v1);
     NS_LOG_INFO("v4 size after move: " << v4.GetSize());
     NS_TEST_ASSERT_MSG_EQ(v1size, v4.GetSize(), "The number of elements are not equal.");
-    for (uint16_t i = 0; i < v4.GetNumRows(); ++i)
+    for (size_t i = 0; i < v4.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v4.GetNumCols(); ++j)
+        for (size_t j = 0; j < v4.GetNumCols(); ++j)
         {
             // Use v3 for comparison since it hasn't moved
             NS_TEST_ASSERT_MSG_EQ(v3(i, j), v4(i, j), "The elements are not equal.");
@@ -150,9 +165,9 @@ ValArrayTestCase<T>::DoRun()
     size_t v3size = v3.GetSize();
     ValArray<T> v5(std::move(v3));
     NS_TEST_ASSERT_MSG_EQ(v3size, v5.GetSize(), "The number of elements are not equal.");
-    for (uint16_t i = 0; i < v5.GetNumRows(); ++i)
+    for (size_t i = 0; i < v5.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v5.GetNumCols(); ++j)
+        for (size_t j = 0; j < v5.GetNumCols(); ++j)
         {
             // Use v4 for comparison since it hasn't moved
             NS_TEST_ASSERT_MSG_EQ(v4(i, j), v5(i, j), "The elements are not equal.");
@@ -177,10 +192,10 @@ ValArrayTestCase<T>::DoRun()
     // test whether column-major order was respected during the initialization and
     // also in the access operator if we iterate over rows first we should find 0, 2, 4, 6, ...
     std::valarray<int> initArray2{0, 2, 4, 6, 1, 3, 5, 7};
-    auto testIndex = 0;
-    for (uint16_t i = 0; i < v6.GetNumRows(); ++i)
+    size_t testIndex = 0;
+    for (size_t i = 0; i < v6.GetNumRows(); ++i)
     {
-        for (uint16_t j = 0; j < v6.GetNumCols(); ++j)
+        for (size_t j = 0; j < v6.GetNumCols(); ++j)
         {
             NS_TEST_ASSERT_MSG_EQ(v6(i, j),
                                   static_cast<T>(initArray2[testIndex]),
@@ -203,11 +218,11 @@ ValArrayTestCase<T>::DoRun()
     // if we iterate over rows first we should find 0, 2, 4, 6, ...
     std::valarray<int> initArray4{0, 2, 4, 6, 1, 3, 5, 7, 0, 2, 4, 6, 1, 3, 5, 7};
     testIndex = 0;
-    for (uint16_t p = 0; p < v7.GetNumPages(); ++p)
+    for (size_t p = 0; p < v7.GetNumPages(); ++p)
     {
-        for (uint16_t i = 0; i < v7.GetNumRows(); ++i)
+        for (size_t i = 0; i < v7.GetNumRows(); ++i)
         {
-            for (uint16_t j = 0; j < v7.GetNumCols(); ++j)
+            for (size_t j = 0; j < v7.GetNumCols(); ++j)
             {
                 NS_TEST_ASSERT_MSG_EQ(v7(i, j, p),
                                       static_cast<T>(initArray4[testIndex]),
@@ -219,11 +234,11 @@ ValArrayTestCase<T>::DoRun()
 
     // multiplication with a scalar value with 3D array
     ValArray<T> v8 = v7 * (static_cast<T>(5.0));
-    for (uint16_t p = 0; p < v8.GetNumPages(); ++p)
+    for (size_t p = 0; p < v8.GetNumPages(); ++p)
     {
-        for (uint16_t i = 0; i < v8.GetNumRows(); ++i)
+        for (size_t i = 0; i < v8.GetNumRows(); ++i)
         {
-            for (uint16_t j = 0; j < v8.GetNumCols(); ++j)
+            for (size_t j = 0; j < v8.GetNumCols(); ++j)
             {
                 NS_TEST_ASSERT_MSG_EQ(v7(i, j, p) * (static_cast<T>(5.0)),
                                       v8(i, j, p),

@@ -23,14 +23,14 @@
 #define NS3_SOCKET_H
 
 #include "address.h"
+#include "net-device.h"
+#include "tag.h"
 
 #include "ns3/callback.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
-#include "ns3/net-device.h"
 #include "ns3/object.h"
 #include "ns3/ptr.h"
-#include "ns3/tag.h"
 
 #include <stdint.h>
 
@@ -162,11 +162,11 @@ class Socket : public Object
      *         socket. Each socket's errno is initialized to zero
      *         when the socket is created.
      */
-    virtual enum Socket::SocketErrno GetErrno() const = 0;
+    virtual Socket::SocketErrno GetErrno() const = 0;
     /**
      * \return the socket type, analogous to getsockopt (SO_TYPE)
      */
-    virtual enum Socket::SocketType GetSocketType() const = 0;
+    virtual Socket::SocketType GetSocketType() const = 0;
     /**
      * \brief Return the node this socket is associated with.
      * \returns the node
@@ -779,9 +779,11 @@ class Socket : public Object
      * \brief Manually set IP Type of Service field
      *
      * This method corresponds to using setsockopt () IP_TOS of
-     * real network or BSD sockets. This option is for IPv4 only.
+     * real network or BSD sockets.
      * Setting the IP TOS also changes the socket priority as
      * stated in the man page.
+     * This option affects only IPv4 sockets, it has no effect
+     * on IPv6 sockets.
      *
      * \param ipTos The desired TOS value for IP headers
      */

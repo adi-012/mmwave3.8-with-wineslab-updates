@@ -233,7 +233,7 @@ class RoutingTableEntry
      */
     Time GetSettlingTime() const
     {
-        return (m_settlingTime);
+        return m_settlingTime;
     }
 
     /**
@@ -317,7 +317,7 @@ class RoutingTableEntry
     /// A node does that in hope of receiving a better update.
     Time m_settlingTime;
     /// Flag to show if any of the routing table entries were changed with the routing update.
-    uint32_t m_entriesChanged;
+    bool m_entriesChanged;
 };
 
 /**
@@ -353,7 +353,7 @@ class RoutingTable
      * \param id destination address
      * \param rt entry with destination address dst, if exists
      * \param forRouteInput for routing input
-     * \return true on success
+     * \return true onns3  success
      */
     bool LookupRoute(Ipv4Address id, RoutingTableEntry& rt, bool forRouteInput);
     /**

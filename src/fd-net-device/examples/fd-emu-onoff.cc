@@ -103,7 +103,6 @@
 //
 
 #include "ns3/applications-module.h"
-#include "ns3/config-store-module.h"
 #include "ns3/core-module.h"
 #include "ns3/fd-net-device-module.h"
 #include "ns3/internet-module.h"
@@ -201,7 +200,7 @@ main(int argc, char* argv[])
 #ifdef HAVE_PACKET_H
     if (emuMode == "raw")
     {
-        EmuFdNetDeviceHelper* raw = new EmuFdNetDeviceHelper;
+        auto raw = new EmuFdNetDeviceHelper;
         raw->SetDeviceName(deviceName);
         helper = raw;
     }

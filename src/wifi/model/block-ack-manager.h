@@ -32,6 +32,7 @@
 #include "ns3/traced-callback.h"
 
 #include <map>
+#include <optional>
 
 namespace ns3
 {
@@ -408,22 +409,15 @@ class BlockAckManager : public Object
     CtrlBAckRequestHeader GetBlockAckReqHeader(const Mac48Address& recipient, uint8_t tid) const;
 
     /**
-     * \param bar the BlockAckRequest to enqueue
+     * \param reqHdr the BlockAckRequest header
+     * \param hdr the 802.11 MAC header
      *
-     * Enqueue the given BlockAckRequest into the queue storing the next (MU-)BAR
+     * Enqueue the given BlockAckRequest into the queue storing the next BAR
      * frames to transmit. If a BAR for the same recipient and TID is already present
      * in the queue, it is replaced by the new one. If the given BAR is retransmitted,
      * it is placed at the head of the queue, otherwise at the tail.
      */
-    void ScheduleBar(Ptr<WifiMpdu> bar);
-    /**
-     * \param muBar the MU-BAR Trigger Frame to enqueue
-     *
-     * Enqueue the given MU-BAR Trigger Frame into the queue storing the next (MU-)BAR
-     * frames to transmit. If the given MU-BAR Trigger Frame is retransmitted,
-     * it is placed at the head of the queue, otherwise at the tail.
-     */
-    void ScheduleMuBar(Ptr<WifiMpdu> muBar);
+    void ScheduleBar(const CtrlBAckRequestHeader& reqHdr, const WifiMacHeader& hdr);
 
     /// agreement key typedef (MAC address and TID)
     using AgreementKey = std::pair<Mac48Address, uint8_t>;

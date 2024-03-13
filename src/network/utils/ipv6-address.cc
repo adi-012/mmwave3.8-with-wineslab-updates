@@ -260,7 +260,7 @@ Ipv6Address::MakeIpv4MappedAddress(Ipv4Address addr)
         0x00,
     };
     addr.Serialize(&buf[12]);
-    return (Ipv6Address(buf));
+    return Ipv6Address(buf);
 }
 
 Ipv4Address
@@ -272,7 +272,7 @@ Ipv6Address::GetIpv4MappedAddress() const
 
     Serialize(buf);
     v4Addr = Ipv4Address::Deserialize(&buf[12]);
-    return (v4Addr);
+    return v4Addr;
 }
 
 Ipv6Address
@@ -552,22 +552,14 @@ bool
 Ipv6Address::IsMulticast() const
 {
     NS_LOG_FUNCTION(this);
-    if (m_address[0] == 0xff)
-    {
-        return true;
-    }
-    return false;
+    return m_address[0] == 0xff;
 }
 
 bool
 Ipv6Address::IsLinkLocalMulticast() const
 {
     NS_LOG_FUNCTION(this);
-    if (m_address[0] == 0xff && m_address[1] == 0x02)
-    {
-        return true;
-    }
-    return false;
+    return m_address[0] == 0xff && m_address[1] == 0x02;
 }
 
 bool
@@ -576,11 +568,7 @@ Ipv6Address::IsIpv4MappedAddress() const
     NS_LOG_FUNCTION(this);
     static uint8_t v4MappedPrefix[12] =
         {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff};
-    if (memcmp(m_address, v4MappedPrefix, sizeof(v4MappedPrefix)) == 0)
-    {
-        return (true);
-    }
-    return (false);
+    return memcmp(m_address, v4MappedPrefix, sizeof(v4MappedPrefix)) == 0;
 }
 
 Ipv6Address
@@ -610,11 +598,7 @@ Ipv6Address::IsSolicitedMulticast() const
     NS_LOG_FUNCTION(this);
 
     static Ipv6Address documentation("ff02::1:ff00:0");
-    if (CombinePrefix(Ipv6Prefix(104)) == documentation)
-    {
-        return true;
-    }
-    return false;
+    return CombinePrefix(Ipv6Prefix(104)) == documentation;
 }
 
 bool
@@ -652,11 +636,7 @@ Ipv6Address::IsDocumentation() const
 {
     NS_LOG_FUNCTION(this);
     static Ipv6Address documentation("2001:db8::0");
-    if (CombinePrefix(Ipv6Prefix(32)) == documentation)
-    {
-        return true;
-    }
-    return false;
+    return CombinePrefix(Ipv6Prefix(32)) == documentation;
 }
 
 bool
@@ -667,7 +647,7 @@ Ipv6Address::HasPrefix(const Ipv6Prefix& prefix) const
     Ipv6Address masked = CombinePrefix(prefix);
     Ipv6Address reference = Ipv6Address::GetOnes().CombinePrefix(prefix);
 
-    return (masked == reference);
+    return masked == reference;
 }
 
 bool
@@ -777,18 +757,14 @@ Ipv6Address::IsLinkLocal() const
 {
     NS_LOG_FUNCTION(this);
     static Ipv6Address linkLocal("fe80::0");
-    if (CombinePrefix(Ipv6Prefix(64)) == linkLocal)
-    {
-        return true;
-    }
-    return false;
+    return CombinePrefix(Ipv6Prefix(64)) == linkLocal;
 }
 
 bool
 Ipv6Address::IsInitialized() const
 {
     NS_LOG_FUNCTION(this);
-    return (m_initialized);
+    return m_initialized;
 }
 
 std::ostream&

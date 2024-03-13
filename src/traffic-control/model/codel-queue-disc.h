@@ -18,8 +18,9 @@
  * Based on ns2 simulation code presented by Kathie Nichols
  *
  * This port based on linux kernel code by
- * Authors: Dave Täht <d@taht.net>
- *          Eric Dumazet <edumazet@google.com>
+ * Authors:
+ *   Dave Täht <d@taht.net>
+ *   Eric Dumazet <edumazet@google.com>
  *
  * Ported to ns-3 by: Andrew McGregor <andrewmcgr@gmail.com>
  */
@@ -27,8 +28,9 @@
 #ifndef CODEL_H
 #define CODEL_H
 
+#include "queue-disc.h"
+
 #include "ns3/nstime.h"
-#include "ns3/queue-disc.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 #include "ns3/trace-source-accessor.h"

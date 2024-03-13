@@ -261,6 +261,7 @@ class EhtCapabilities : public WifiInformationElement
     // Implementations of pure virtual methods, or overridden from base class.
     WifiInformationElementId ElementId() const override;
     WifiInformationElementId ElementIdExt() const override;
+    void Print(std::ostream& os) const override;
 
     /**
      * Set the maximum MPDU length.
@@ -272,7 +273,7 @@ class EhtCapabilities : public WifiInformationElement
     /**
      * Set the maximum A-MPDU length.
      *
-     * \param maxAmpduLength 2^(23 + x) - 1, x in the range 0 to 3
+     * \param maxAmpduLength 2^(23 + x) - 1, x in the range 0 to 1
      */
     void SetMaxAmpduLength(uint32_t maxAmpduLength);
 
@@ -347,21 +348,11 @@ class EhtCapabilities : public WifiInformationElement
     void SerializeInformationField(Buffer::Iterator start) const override;
     uint16_t DeserializeInformationField(Buffer::Iterator start, uint16_t length) override;
 
-    friend std::ostream& operator<<(std::ostream& os, const EhtCapabilities& ehtCapabilities);
-
     bool m_is2_4Ghz; //!< flag indicating whether PHY is operating in 2.4 GHz based on other IEs
                      //!< contained in the same management frame
     std::optional<HeCapabilities>
         m_heCapabilities; //!< HE capabilities contained in the same management frame if present
 };
-
-/**
- * output stream output operator
- * \param os the output stream
- * \param ehtCapabilities the EHT capabilities
- * \returns the output stream
- */
-std::ostream& operator<<(std::ostream& os, const EhtCapabilities& ehtCapabilities);
 
 } // namespace ns3
 

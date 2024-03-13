@@ -55,11 +55,7 @@ ObjectFactory::SetTypeId(std::string tid)
 bool
 ObjectFactory::IsTypeIdSet() const
 {
-    if (m_tid.GetUid() != 0)
-    {
-        return true;
-    }
-    return false;
+    return m_tid.GetUid() != 0;
 }
 
 void
@@ -71,7 +67,7 @@ ObjectFactory::DoSet(const std::string& name, const AttributeValue& value)
         return;
     }
 
-    struct TypeId::AttributeInformation info;
+    TypeId::AttributeInformation info;
     if (!m_tid.LookupAttributeByName(name, &info))
     {
         NS_FATAL_ERROR("Invalid attribute set (" << name << ") on " << m_tid.GetName());
@@ -97,9 +93,12 @@ Ptr<Object>
 ObjectFactory::Create() const
 {
     NS_LOG_FUNCTION(this);
+    NS_ASSERT_MSG(
+        m_tid.GetUid(),
+        "ObjectFactory::Create - can't use an ObjectFactory without setting a TypeId first.");
     Callback<ObjectBase*> cb = m_tid.GetConstructor();
     ObjectBase* base = cb();
-    Object* derived = dynamic_cast<Object*>(base);
+    auto derived = dynamic_cast<Object*>(base);
     NS_ASSERT(derived != nullptr);
     derived->SetTypeId(m_tid);
     derived->Construct(m_parameters);
@@ -112,9 +111,7 @@ operator<<(std::ostream& os, const ObjectFactory& factory)
 {
     os << factory.m_tid.GetName() << "[";
     bool first = true;
-    for (AttributeConstructionList::CIterator i = factory.m_parameters.Begin();
-         i != factory.m_parameters.End();
-         ++i)
+    for (auto i = factory.m_parameters.Begin(); i != factory.m_parameters.End(); ++i)
     {
         os << i->name << "=" << i->value->SerializeToString(i->checker);
         if (first)
@@ -162,7 +159,7 @@ operator>>(std::istream& is, ObjectFactory& factory)
         else
         {
             std::string name = parameters.substr(cur, equal - cur);
-            struct TypeId::AttributeInformation info;
+            TypeId::AttributeInformation info;
             if (!factory.m_tid.LookupAttributeByName(name, &info))
             {
                 is.setstate(std::ios_base::failbit);

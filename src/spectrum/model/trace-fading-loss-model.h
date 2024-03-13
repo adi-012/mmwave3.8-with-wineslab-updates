@@ -21,10 +21,11 @@
 #ifndef TRACE_FADING_LOSS_MODEL_H
 #define TRACE_FADING_LOSS_MODEL_H
 
+#include "spectrum-propagation-loss-model.h"
+
 #include "ns3/random-variable-stream.h"
 #include <ns3/nstime.h>
 #include <ns3/object.h>
-#include <ns3/spectrum-propagation-loss-model.h>
 
 #include <map>
 
@@ -57,15 +58,8 @@ class TraceFadingLossModel : public SpectrumPropagationLossModel
      */
     typedef std::pair<Ptr<const MobilityModel>, Ptr<const MobilityModel>> ChannelRealizationId_t;
 
-    /**
-     * Assign a fixed random variable stream number to the random variables
-     * used by this model.  Return the number of streams (possibly zero) that
-     * have been assigned.
-     *
-     * \param stream first stream index to use
-     * \return the number of stream indices assigned by this model
-     */
-    int64_t AssignStreams(int64_t stream);
+  protected:
+    int64_t DoAssignStreams(int64_t stream) override;
 
   private:
     /**
@@ -122,9 +116,9 @@ class TraceFadingLossModel : public SpectrumPropagationLossModel
     Time m_traceLength;               ///< the trace time
     uint32_t m_samplesNum;            ///< number of samples
     Time m_windowSize;                ///< window size
-    uint8_t m_rbNum;                  ///< RB number
+    uint32_t m_rbNum;                 ///< RB number
     mutable Time m_lastWindowUpdate;  ///< time of last window update
-    uint8_t m_timeGranularity;        ///< time granularity
+    uint32_t m_timeGranularity;       ///< time granularity
     mutable uint64_t m_currentStream; ///< the current stream
     mutable uint64_t m_lastStream;    ///< the last stream
     uint64_t m_streamSetSize;         ///< stream set size

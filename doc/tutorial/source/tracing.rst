@@ -313,7 +313,6 @@ We have provided some code to implement what is really the simplest
 example of tracing that can be assembled.  You can find this code in
 the tutorial directory as ``fourth.cc``.  Let's walk through it::
 
-  /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
   /*
    * This program is free software; you can redistribute it and/or modify
    * it under the terms of the GNU General Public License version 2 as
@@ -559,7 +558,7 @@ could have used this ``Ptr<Node>`` to call a Connect method
 directly::
 
   Ptr<Object> theObject = wifiStaNodes.Get(nWifi - 1);
-  theObject->TraceConnectWithoutContext("CourseChange", MakeCallback(&CourseChange));
+  theObject->GetObject<MobilityModel>()->TraceConnectWithoutContext("CourseChange", MakeCallback(&CourseChange));
 
 In the ``third.cc`` example, we actually wanted an additional "context"
 to be delivered along with the Callback parameters (which will be
@@ -567,7 +566,7 @@ explained below) so we could actually use the following equivalent
 code::
 
   Ptr<Object> theObject = wifiStaNodes.Get(nWifi - 1);
-  theObject->TraceConnect("CourseChange", MakeCallback(&CourseChange));
+  theObject->GetObject<MobilityModel>()->TraceConnect("CourseChange", MakeCallback(&CourseChange));
 
 It turns out that the internal code for
 ``Config::ConnectWithoutContext`` and ``Config::Connect`` actually
@@ -590,7 +589,7 @@ One of the predefined namespaces in the config system is "NodeList"
 which is a list of all of the nodes in the simulation.  Items in the
 list are referred to by indices into the list, so "/NodeList/7" refers
 to the eighth Node in the list of nodes created during the simulation
-(recall indices start at `0').  This reference is actually a
+(recall indices start at '0').  This reference is actually a
 ``Ptr<Node>`` and so is a subclass of an ``ns3::Object``.
 
 As described in the Object Model section of the |ns3| Manual, we make
@@ -1390,7 +1389,6 @@ dissecting the congestion window test.  Open
 ``examples/tutorial/fifth.cc`` in your favorite editor.  You should
 see some familiar looking code::
 
-  /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
   /*
    * This program is free software; you can redistribute it and/or modify
    * it under the terms of the GNU General Public License version 2 as
@@ -1465,8 +1463,8 @@ This should also be self-explanatory.
 
 Previous versions of |ns3| declared a custom application called ``MyApp``
 for use in this program.  Current versions of |ns3| have moved this to
-a separate header file (``tutorial-app.h'') and implementation file
-(``tutorial-app.cc'').  This simple application allows the ``Socket''
+a separate header file (``tutorial-app.h``) and implementation file
+(``tutorial-app.cc``).  This simple application allows the ``Socket``
 to be created at configuration time.
 
 ::
@@ -1889,11 +1887,11 @@ Main Program
 ~~~~~~~~~~~~
 
 The main function starts off by configuring the TCP type to use a legacy
-``NewReno`` congestion control variant, with what is called the ``classic''
+``NewReno`` congestion control variant, with what is called the ``classic``
 TCP loss recovery mechanism.  When this tutorial program was originally
 written, these were the default TCP configurations, but over time,
 |ns3| TCP has evolved to use the current Linux TCP defaults of ``Cubic``
-and ``Prr'' loss recovery.  The first statements also configure the
+and ``Prr`` loss recovery.  The first statements also configure the
 command-line argument processing.
 
 ::

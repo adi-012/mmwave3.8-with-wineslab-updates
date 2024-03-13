@@ -21,7 +21,7 @@
 
 #include "ctrl-headers.h"
 #include "mac-rx-middle.h"
-#include "mgt-headers.h"
+#include "mgt-action-headers.h"
 #include "qos-utils.h"
 #include "wifi-mac-queue.h"
 #include "wifi-tx-vector.h"
@@ -30,6 +30,7 @@
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
+#include <algorithm>
 #include <optional>
 
 namespace ns3
@@ -600,8 +601,6 @@ BlockAckManager::NotifyDiscardedMpdu(Ptr<const WifiMpdu> mpdu)
     // schedule a BlockAckRequest
     NS_LOG_DEBUG("Schedule a Block Ack Request for agreement (" << recipient << ", " << +tid
                                                                 << ")");
-    Ptr<Packet> bar = Create<Packet>();
-    bar->AddHeader(GetBlockAckReqHeader(recipient, tid));
 
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_CTL_BACKREQ);
@@ -612,7 +611,7 @@ BlockAckManager::NotifyDiscardedMpdu(Ptr<const WifiMpdu> mpdu)
     hdr.SetNoRetry();
     hdr.SetNoMoreFragments();
 
-    ScheduleBar(Create<WifiMpdu>(bar, hdr));
+    ScheduleBar(GetBlockAckReqHeader(recipient, tid), hdr);
 }
 
 void
@@ -660,28 +659,27 @@ BlockAckManager::GetBlockAckReqHeader(const Mac48Address& recipient, uint8_t tid
 }
 
 void
-BlockAckManager::ScheduleBar(Ptr<WifiMpdu> bar)
+BlockAckManager::ScheduleBar(const CtrlBAckRequestHeader& reqHdr, const WifiMacHeader& hdr)
 {
-    NS_LOG_FUNCTION(this << *bar);
-    NS_ASSERT(bar->GetHeader().IsBlockAckReq());
+    NS_LOG_FUNCTION(this << reqHdr << hdr);
 
-    CtrlBAckRequestHeader reqHdr;
-    bar->GetPacket()->PeekHeader(reqHdr);
     uint8_t tid = reqHdr.GetTidInfo();
 
-    WifiContainerQueueId queueId(WIFI_CTL_QUEUE, bar->GetHeader().GetAddr2(), std::nullopt);
+    WifiContainerQueueId queueId(WIFI_CTL_QUEUE, WIFI_UNICAST, hdr.GetAddr1(), std::nullopt);
+    auto pkt = Create<Packet>();
+    pkt->AddHeader(reqHdr);
     Ptr<WifiMpdu> item = nullptr;
 
     // if a BAR for the given agreement is present, replace it with the new one
     while ((item = m_queue->PeekByQueueId(queueId, item)))
     {
-        if (item->GetHeader().IsBlockAckReq() &&
-            item->GetHeader().GetAddr1() == bar->GetHeader().GetAddr1())
+        if (item->GetHeader().IsBlockAckReq() && item->GetHeader().GetAddr1() == hdr.GetAddr1())
         {
             CtrlBAckRequestHeader otherHdr;
             item->GetPacket()->PeekHeader(otherHdr);
             if (otherHdr.GetTidInfo() == tid)
             {
+                auto bar = Create<WifiMpdu>(pkt, hdr, item->GetTimestamp());
                 // replace item with bar
                 m_queue->Replace(item, bar);
                 return;
@@ -689,22 +687,7 @@ BlockAckManager::ScheduleBar(Ptr<WifiMpdu> bar)
         }
     }
 
-    m_queue->Enqueue(bar);
-}
-
-void
-BlockAckManager::ScheduleMuBar(Ptr<WifiMpdu> muBar)
-{
-    NS_LOG_FUNCTION(this << *muBar);
-    NS_ASSERT(muBar->GetHeader().IsTrigger());
-
-#ifdef NS3_BUILD_PROFILE_DEBUG
-    CtrlTriggerHeader triggerHdr;
-    muBar->GetPacket()->PeekHeader(triggerHdr);
-    NS_ASSERT(triggerHdr.IsMuBar());
-#endif
-
-    m_queue->Enqueue(muBar);
+    m_queue->Enqueue(Create<WifiMpdu>(pkt, hdr));
 }
 
 const std::list<BlockAckManager::AgreementKey>&
@@ -773,6 +756,7 @@ BlockAckManager::NotifyOriginatorAgreementRejected(const Mac48Address& recipient
                                    OriginatorBlockAckAgreement::REJECTED);
     }
     it->second.first.SetState(OriginatorBlockAckAgreement::REJECTED);
+    m_unblockPackets(recipient, tid);
 }
 
 void

@@ -485,7 +485,7 @@ Int64x64ArithmeticTestCase::DoRun()
     const int64x64_t zero(0, 0);
     const int64x64_t one(1, 0);
     const int64x64_t two(2, 0);
-    const int64x64_t thre(3, 0);
+    const int64x64_t three(3, 0);
 
     std::cout << std::endl;
     std::cout << GetParent()->GetName() << " Arithmetic: " << GetName() << std::endl;
@@ -497,14 +497,14 @@ Int64x64ArithmeticTestCase::DoRun()
     Check(3, one - two, -one);
     Check(4, one - (-one), two);
     Check(5, (-one) - (-two), one);
-    Check(6, (-one) - two, -thre);
+    Check(6, (-one) - two, -three);
 
     Check(7, zero + zero, zero);
     Check(8, zero + one, one);
     Check(9, one + one, two);
-    Check(10, one + two, thre);
+    Check(10, one + two, three);
     Check(11, one + (-one), zero);
-    Check(12, (-one) + (-two), -thre);
+    Check(12, (-one) + (-two), -three);
     Check(13, (-one) + two, one);
 
     Check(14, zero * zero, zero);
@@ -514,7 +514,7 @@ Int64x64ArithmeticTestCase::DoRun()
     Check(18, one * (-one), -one);
     Check(19, (-one) * (-one), one);
 
-    Check(20, (two * thre) / thre, two);
+    Check(20, (two * three) / three, two);
     // NOLINTEND(misc-redundant-expression)
 
     const int64x64_t frac = int64x64_t(0, 0xc000000000000000ULL); // 0.75
@@ -526,7 +526,7 @@ Int64x64ArithmeticTestCase::DoRun()
     const int64x64_t zerof = zero + frac;
     const int64x64_t onef = one + frac;
     const int64x64_t twof = two + frac;
-    const int64x64_t thref = thre + frac;
+    const int64x64_t thref = three + frac;
 
     // NOLINTBEGIN(misc-redundant-expression)
     Check(23, zerof, frac);
@@ -559,11 +559,11 @@ Int64x64ArithmeticTestCase::DoRun()
     // NOLINTEND(misc-redundant-expression)
 
     // Multiplication followed by division is exact:
-    Check(46, (two * thre) / thre, two);
+    Check(46, (two * three) / three, two);
     Check(47, (twof * thref) / thref, twof);
 
     // Division followed by multiplication loses a bit or two:
-    Check(48, (two / thre) * thre, two, 2 * tol1);
+    Check(48, (two / three) * three, two, 2 * tol1);
     Check(49, (twof / thref) * thref, twof, 3 * tol1);
 
     // The example below shows that we really do not lose
@@ -620,7 +620,7 @@ Int64x64Bug455TestCase::DoRun()
     std::cout << std::endl;
     std::cout << GetParent()->GetName() << " Bug 455: " << GetName() << std::endl;
 
-    int64x64_t a = int64x64_t(0.1);
+    int64x64_t a(0.1);
     a /= int64x64_t(1.25);
     Check(a.GetDouble(), 0.08, "The original testcase");
 
@@ -684,7 +684,7 @@ Int64x64Bug863TestCase::DoRun()
     std::cout << std::endl;
     std::cout << GetParent()->GetName() << " Bug 863: " << GetName() << std::endl;
 
-    int64x64_t a = int64x64_t(0.9);
+    int64x64_t a(0.9);
     a /= int64x64_t(1);
     Check(a.GetDouble(), 0.9, "The original testcase");
 
@@ -1033,7 +1033,7 @@ Int64x64InvertTestCase::Check(const int64_t factor)
     const int64x64_t factorI = one / int64x64_t(factor);
 
     const int64x64_t a = int64x64_t::Invert(factor);
-    int64x64_t b = int64x64_t(factor);
+    int64x64_t b(factor);
 
     double tolerance = 0;
     if (int64x64_t::implementation == int64x64_t::ld_impl)
@@ -1045,15 +1045,15 @@ Int64x64InvertTestCase::Check(const int64_t factor)
     b.MulByInvert(a);
     CheckCase(factor, b, one, "x * x^-1 == 1", tolerance);
 
-    int64x64_t c = int64x64_t(1);
+    int64x64_t c(1);
     c.MulByInvert(a);
     CheckCase(factor, c, factorI, "1 * x^-1 == 1 / x");
 
-    int64x64_t d = int64x64_t(1);
+    int64x64_t d(1);
     d /= (int64x64_t(factor));
     CheckCase(factor, d, c, "1/x == x^-1");
 
-    int64x64_t e = int64x64_t(-factor);
+    int64x64_t e(-factor);
     e.MulByInvert(a);
     CheckCase(factor, e, -one, "-x * x^-1 == -1", tolerance);
 }

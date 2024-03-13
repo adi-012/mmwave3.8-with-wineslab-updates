@@ -19,7 +19,7 @@ either WSL or the Msys2/MinGW64 toolchain (installing both is not required).
 
 .. note::
   |ns3| is not fully compatible with Visual Studio IDE / MSVC compiler; only Visual Studio Code
-editor, the Msys2/MinGW64 toolchain, and WSL, as explained below.
+  editor, the Msys2/MinGW64 toolchain, and WSL, as explained below.
 
 .. _WSL2:
 
@@ -175,7 +175,7 @@ To install it with the network installer, start by creating a texlive folder and
 texlive configuration profile below. You can change the installation directory (starting with
 ``C:/texlive/2022``).
 
-.. sourcecode:: raw
+.. sourcecode:: text
 
     selected_scheme scheme-custom
     TEXDIR C:/texlive/2022

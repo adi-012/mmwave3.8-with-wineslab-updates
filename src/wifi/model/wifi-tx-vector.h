@@ -22,15 +22,21 @@
 #define WIFI_TX_VECTOR_H
 
 #include "wifi-mode.h"
+#include "wifi-phy-band.h"
 #include "wifi-phy-common.h"
 
 #include "ns3/he-ru.h"
 
 #include <list>
+#include <optional>
+#include <set>
 #include <vector>
 
 namespace ns3
 {
+
+/// STA_ID for a RU that is intended for no user (Section 26.11.1 802.11ax-2021)
+static constexpr uint16_t NO_USER_STA_ID = 2046;
 
 /// HE MU specific user transmission parameters.
 struct HeMuUserInfo
@@ -55,17 +61,21 @@ struct HeMuUserInfo
     bool operator!=(const HeMuUserInfo& other) const;
 };
 
-/// A vector of subcarrier group
-using SubcarrierGroups = std::vector<HeRu::SubcarrierGroup>;
-
-/// Maximum number of HE-SIG-B content channels
-constexpr size_t WIFI_MAX_NUM_HE_SIGB_CONTENT_CHANNELS = 2;
-
-/// HE SIG-B Content Channels STA ID Allocation
-using ContentChannelAllocation = std::vector<std::vector<uint16_t>>;
-
 /// 8 bit RU_ALLOCATION per 20 MHz
 using RuAllocation = std::vector<uint8_t>;
+
+/**
+ * \ingroup wifi
+ * Enum for the different values for CENTER_26_TONE_RU
+ */
+enum Center26ToneRuIndication : uint8_t
+{
+    CENTER_26_TONE_RU_UNALLOCATED = 0,
+    CENTER_26_TONE_RU_LOW_80_MHZ_ALLOCATED,          /* also used if BW == 80 MHz */
+    CENTER_26_TONE_RU_HIGH_80_MHZ_ALLOCATED,         /* unused if BW < 160 MHz */
+    CENTER_26_TONE_RU_LOW_AND_HIGH_80_MHZ_ALLOCATED, /* unused if BW < 160 MHz */
+    CENTER_26_TONE_RU_INDICATION_MAX                 /* last value */
+};
 
 /**
  * This class mimics the TXVECTOR which is to be
@@ -105,7 +115,6 @@ class WifiTxVector
         HeMuUserInfoMap;
 
     WifiTxVector();
-    ~WifiTxVector();
     /**
      * Create a TXVECTOR with the given parameters.
      *
@@ -240,9 +249,13 @@ class WifiTxVector
      */
     uint8_t GetNss(uint16_t staId = SU_STA_ID) const;
     /**
-     * \returns the maximum number of Nss (namely if MU)
+     * \returns the maximum number of Nss over all RUs of an HE MU (used for OFDMA)
      */
     uint8_t GetNssMax() const;
+    /**
+     * \returns the total number of Nss for a given RU of an HE MU (used for full bandwidth MU-MIMO)
+     */
+    uint8_t GetNssTotal() const;
     /**
      * Sets the number of Nss
      *
@@ -344,10 +357,13 @@ class WifiTxVector
      * The standard disallows certain combinations of WifiMode, number of
      * spatial streams, and channel widths.  This method can be used to
      * check whether this WifiTxVector contains an invalid combination.
+     * If a PHY band is specified, it is checked that the PHY band is appropriate for
+     * the modulation class of the TXVECTOR, in case the latter is OFDM or ERP-OFDM.
      *
+     * \param band the PHY band
      * \return true if the WifiTxVector parameters are allowed by the standard
      */
-    bool IsValid() const;
+    bool IsValid(WifiPhyBand band = WIFI_PHY_BAND_UNSPECIFIED) const;
     /**
      * \return true if this TX vector is used for a multi-user (OFDMA and/or MU-MIMO) transmission
      */
@@ -362,6 +378,24 @@ class WifiTxVector
      * transmission
      */
     bool IsUlMu() const;
+    /**
+     * Return true if this TX vector is used for a downlink multi-user transmission using OFDMA.
+     *
+     * \return true if this TX vector is used for a downlink multi-user transmission using OFDMA
+     */
+    bool IsDlOfdma() const;
+    /**
+     * Return true if this TX vector is used for a downlink multi-user transmission using MU-MIMO.
+     *
+     * \return true if this TX vector is used for a downlink multi-user transmission using MU-MIMO
+     */
+    bool IsDlMuMimo() const;
+    /**
+     * Check if STA ID is allocated
+     * \param staId STA ID
+     * \return true if allocated, false otherwise
+     */
+    bool IsAllocated(uint16_t staId) const;
     /**
      * Get the RU specification for the STA-ID.
      * This is applicable only for MU.
@@ -408,15 +442,24 @@ class WifiTxVector
      * \return a reference to the map of HE MU user-specific information indexed by STA-ID
      */
     HeMuUserInfoMap& GetHeMuUserInfoMap();
+
+    /// map of specific user info parameters ordered per increasing frequency RUs
+    using UserInfoMapOrderedByRus = std::map<HeRu::RuSpec, std::set<uint16_t>, HeRu::RuSpecCompare>;
+
     /**
-     * Get the number of RUs per HE-SIG-B content channel.
-     * This is applicable only for MU. MU-MIMO (i.e. multiple stations
-     * per RU) is not supported yet.
-     * See section 27.3.10.8.3 of IEEE 802.11ax draft 4.0.
+     * Get the map of specific user info parameters ordered per increasing frequency RUs.
      *
-     * \return a pair containing the number of RUs in each HE-SIG-B content channel (resp. 1 and 2)
+     * \param p20Index the index of the primary20 channel
+     * \return the map of specific user info parameters ordered per increasing frequency RUs
      */
-    std::pair<std::size_t, std::size_t> GetNumRusPerHeSigBContentChannel() const;
+    UserInfoMapOrderedByRus GetUserInfoMapOrderedByRus(uint8_t p20Index) const;
+
+    /**
+     * Indicate whether the Common field is present in the HE-SIG-B field.
+     *
+     * \return true if the Common field is present in the HE-SIG-B, false otherwise
+     */
+    bool IsSigBCompression() const;
 
     /**
      * Set the 20 MHz subchannels that are punctured.
@@ -448,23 +491,32 @@ class WifiTxVector
     WifiMode GetSigBMode() const;
 
     /**
-     * Set RU Allocation of SIG-B common field
+     * Set RU_ALLOCATION field
      * \param ruAlloc 8 bit RU_ALLOCATION per 20 MHz
+     * \param p20Index the index of the primary20 channel
      */
-    void SetRuAllocation(const RuAllocation& ruAlloc);
+    void SetRuAllocation(const RuAllocation& ruAlloc, uint8_t p20Index);
 
     /**
-     * Get RU Allocation of SIG-B
+     * Get RU_ALLOCATION field
      * \return 8 bit RU_ALLOCATION per 20 MHz
+     * \param p20Index the index of the primary20 channel
      */
-    const RuAllocation& GetRuAllocation() const;
+    const RuAllocation& GetRuAllocation(uint8_t p20Index) const;
 
     /**
-     * Get the HE SIG-B content channel STA ID allocation
-     * IEEE 802.11ax-2021 27.3.11.8.2 HE-SIG-B content channels
-     * \return content channel allocation
+     * Set CENTER_26_TONE_RU field
+     * \param center26ToneRuIndication the CENTER_26_TONE_RU field
      */
-    ContentChannelAllocation GetContentChannelAllocation() const;
+    void SetCenter26ToneRuIndication(Center26ToneRuIndication center26ToneRuIndication);
+
+    /**
+     * Get CENTER_26_TONE_RU field
+     * This field is present if format is HE_MU and
+     * when channel width is set to 80 MHz or larger.
+     * \return the CENTER_26_TONE_RU field if present
+     */
+    std::optional<Center26ToneRuIndication> GetCenter26ToneRuIndication() const;
 
     /**
      * Set the EHT_PPDU_TYPE parameter
@@ -479,12 +531,32 @@ class WifiTxVector
 
   private:
     /**
-     * Derive the RU allocation from the TXVECTOR for which its RU allocation has not been set yet.
-     * This is valid only for allocations of RUs of the same size.
+     * Derive the RU_ALLOCATION field from the TXVECTOR
+     * for which its RU_ALLOCATION field has not been set yet,
+     * based on the content of per-user information.
+     * This is valid only for allocations of RUs of the same size per 20 MHz subchannel.
      *
-     * \return the RU allocation
+     * \param p20Index the index of the primary20 channel
+     * \return 8 bit RU_ALLOCATION per 20 MHz
      */
-    RuAllocation DeriveRuAllocation() const;
+    RuAllocation DeriveRuAllocation(uint8_t p20Index) const;
+
+    /**
+     * Derive the CENTER_26_TONE_RU field from the TXVECTOR
+     * for which its CENTER_26_TONE_RU has not been set yet,
+     * based on the content of per-user information.
+     *
+     * \return the CENTER_26_TONE_RU field
+     */
+    Center26ToneRuIndication DeriveCenter26ToneRuIndication() const;
+
+    /**
+     * Get the number of STAs in a given RU.
+     *
+     * \param ru the RU specification
+     * \return the number of STAs in the RU
+     */
+    uint8_t GetNumStasInRu(const HeRu::RuSpec& ru) const;
 
     WifiMode m_mode;          /**< The DATARATE parameter in Table 15-4.
                               It is the value that will be passed
@@ -519,7 +591,13 @@ class WifiTxVector
 
     mutable RuAllocation m_ruAllocation; /**< RU allocations that are going to be carried
                                               in SIG-B common field per Table 27-1 IEEE */
-    uint8_t m_ehtPpduType;               /**< EHT_PPDU_TYPE per Table 36-1 IEEE 802.11be D2.3 */
+
+    mutable std::optional<Center26ToneRuIndication>
+        m_center26ToneRuIndication; /**< CENTER_26_TONE_RU field when format is HE_MU and
+                                         when channel width is set to 80 MHz or larger  (Table 27-1
+                                       802.11ax-2021)*/
+
+    uint8_t m_ehtPpduType; /**< EHT_PPDU_TYPE per Table 36-1 IEEE 802.11be D2.3 */
 };
 
 /**

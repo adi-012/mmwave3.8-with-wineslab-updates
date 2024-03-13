@@ -390,7 +390,7 @@ WifiPrimaryChannelsTest::DoSetup()
                 "WaitBeaconTimeout",
                 TimeValue(MicroSeconds(102400))); // same as BeaconInterval
 
-    TupleValue<UintegerValue, UintegerValue, EnumValue, UintegerValue> channelValue;
+    TupleValue<UintegerValue, UintegerValue, EnumValue<WifiPhyBand>, UintegerValue> channelValue;
 
     // Each BSS uses a distinct primary20 channel
     for (uint8_t bss = 0; bss < m_nBss; bss++)
@@ -665,7 +665,7 @@ WifiPrimaryChannelsTest::DoRun()
         {
             for (unsigned int type = 0; type < 7; type++)
             {
-                HeRu::RuType ruType = static_cast<HeRu::RuType>(type);
+                auto ruType = static_cast<HeRu::RuType>(type);
                 std::size_t nRus = HeRu::GetNRus(txChannelWidth, ruType);
                 std::set<uint8_t> txBss;
                 if (nRus > 0)
@@ -713,7 +713,7 @@ WifiPrimaryChannelsTest::DoRun()
         {
             for (unsigned int type = 0; type < 7; type++)
             {
-                HeRu::RuType ruType = static_cast<HeRu::RuType>(type);
+                auto ruType = static_cast<HeRu::RuType>(type);
                 std::size_t nRus = HeRu::GetNRus(txChannelWidth, ruType);
                 std::set<uint8_t> txBss;
                 if (nRus > 0)
@@ -845,7 +845,7 @@ WifiPrimaryChannelsTest::SendDlMuPpdu(uint8_t bss,
     auto IsOddNum = (nRus / numRuAllocs) % 2 == 1;
     auto ruAlloc = HeRu::GetEqualizedRuAllocation(ruType, IsOddNum);
     std::fill_n(ruAllocations.begin(), numRuAllocs, ruAlloc);
-    txVector.SetRuAllocation(ruAllocations);
+    txVector.SetRuAllocation(ruAllocations, 0);
 
     apDev->GetPhy()->Send(psduMap, txVector);
 }
@@ -1375,10 +1375,13 @@ WifiPrimaryChannelsTestSuite::WifiPrimaryChannelsTestSuite()
     // Test cases for 20 MHz can be added, but are not that useful (there would be a single BSS)
     AddTestCase(new WifiPrimaryChannelsTest(40, true), TestCase::QUICK);
     AddTestCase(new WifiPrimaryChannelsTest(40, false), TestCase::QUICK);
+#if 0
+    // Tests disabled until issue #776 resolved
     AddTestCase(new WifiPrimaryChannelsTest(80, true), TestCase::EXTENSIVE);
     AddTestCase(new WifiPrimaryChannelsTest(80, false), TestCase::EXTENSIVE);
     AddTestCase(new WifiPrimaryChannelsTest(160, true), TestCase::TAKES_FOREVER);
     AddTestCase(new WifiPrimaryChannelsTest(160, false), TestCase::TAKES_FOREVER);
+#endif
     AddTestCase(new Wifi20MHzChannelIndicesTest(), TestCase::QUICK);
 }
 

@@ -41,7 +41,10 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("FdReader");
 
+// conditional compilation to avoid Doxygen errors
+#ifdef __WIN32__
 bool FdReader::winsock_initialized = false;
+#endif
 
 FdReader::FdReader()
     : m_fd(-1),
@@ -225,7 +228,7 @@ FdReader::Run()
 
         if (FD_ISSET(m_fd, &readfds))
         {
-            struct FdReader::Data data = DoRead();
+            FdReader::Data data = DoRead();
             // reading stops when m_len is zero
             if (data.m_len == 0)
             {

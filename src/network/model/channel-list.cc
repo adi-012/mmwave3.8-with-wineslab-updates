@@ -162,7 +162,7 @@ void
 ChannelListPriv::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    for (std::vector<Ptr<Channel>>::iterator i = m_channels.begin(); i != m_channels.end(); i++)
+    for (auto i = m_channels.begin(); i != m_channels.end(); i++)
     {
         Ptr<Channel> channel = *i;
         channel->Dispose();
@@ -178,6 +178,7 @@ ChannelListPriv::Add(Ptr<Channel> channel)
     NS_LOG_FUNCTION(this << channel);
     uint32_t index = m_channels.size();
     m_channels.push_back(channel);
+    Simulator::Schedule(TimeStep(0), &Channel::Initialize, channel);
     return index;
 }
 

@@ -21,7 +21,7 @@
 #include "qos-utils.h"
 
 #include "ctrl-headers.h"
-#include "mgt-headers.h"
+#include "mgt-action-headers.h"
 #include "wifi-mac-header.h"
 
 #include "ns3/queue-item.h"
@@ -139,19 +139,15 @@ QosUtilsMapTidToAc(uint8_t tid)
     case 0:
     case 3:
         return AC_BE;
-        break;
     case 1:
     case 2:
         return AC_BK;
-        break;
     case 4:
     case 5:
         return AC_VI;
-        break;
     case 6:
     case 7:
         return AC_VO;
-        break;
     }
     return AC_UNDEF;
 }

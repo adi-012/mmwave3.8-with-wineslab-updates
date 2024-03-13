@@ -30,10 +30,14 @@
 
 /**
  * \file
- * \ingroup config
+ * \ingroup config-impl
  * ns3::Config implementations.
  */
 
+/**
+ * \defgroup config-impl Config implementations
+ * \ingroup config
+ */
 namespace ns3
 {
 
@@ -103,7 +107,7 @@ void
 MatchContainer::Set(std::string name, const AttributeValue& value)
 {
     NS_LOG_FUNCTION(this << name << &value);
-    for (Iterator tmp = Begin(); tmp != End(); ++tmp)
+    for (auto tmp = Begin(); tmp != End(); ++tmp)
     {
         Ptr<Object> object = *tmp;
         // Let ObjectBase::SetAttribute raise any errors
@@ -116,7 +120,7 @@ MatchContainer::SetFailSafe(std::string name, const AttributeValue& value)
 {
     NS_LOG_FUNCTION(this << name << &value);
     bool ok = false;
-    for (Iterator tmp = Begin(); tmp != End(); ++tmp)
+    for (auto tmp = Begin(); tmp != End(); ++tmp)
     {
         Ptr<Object> object = *tmp;
         ok |= object->SetAttributeFailSafe(name, value);
@@ -162,7 +166,7 @@ MatchContainer::ConnectWithoutContextFailSafe(std::string name, const CallbackBa
 {
     NS_LOG_FUNCTION(this << name << &cb);
     bool ok = false;
-    for (Iterator tmp = Begin(); tmp != End(); ++tmp)
+    for (auto tmp = Begin(); tmp != End(); ++tmp)
     {
         Ptr<Object> object = *tmp;
         ok |= object->TraceConnectWithoutContext(name, cb);
@@ -187,7 +191,7 @@ void
 MatchContainer::DisconnectWithoutContext(std::string name, const CallbackBase& cb)
 {
     NS_LOG_FUNCTION(this << name << &cb);
-    for (Iterator tmp = Begin(); tmp != End(); ++tmp)
+    for (auto tmp = Begin(); tmp != End(); ++tmp)
     {
         Ptr<Object> object = *tmp;
         object->TraceDisconnectWithoutContext(name, cb);
@@ -423,8 +427,7 @@ Resolver::GetResolvedPath() const
     NS_LOG_FUNCTION(this);
 
     std::string fullPath = "/";
-    for (std::vector<std::string>::const_iterator i = m_workStack.begin(); i != m_workStack.end();
-         i++)
+    for (auto i = m_workStack.begin(); i != m_workStack.end(); i++)
     {
         fullPath += *i + "/";
     }
@@ -542,14 +545,14 @@ Resolver::DoResolve(std::string path, Ptr<Object> root)
 
             for (uint32_t i = 0; i < tid.GetAttributeN(); i++)
             {
-                struct TypeId::AttributeInformation info;
+                TypeId::AttributeInformation info;
                 info = tid.GetAttribute(i);
                 if (info.name != item && item != "*")
                 {
                     continue;
                 }
                 // attempt to cast to a pointer checker.
-                const PointerChecker* pChecker =
+                const auto pChecker =
                     dynamic_cast<const PointerChecker*>(PeekPointer(info.checker));
                 if (pChecker != nullptr)
                 {
@@ -572,7 +575,7 @@ Resolver::DoResolve(std::string path, Ptr<Object> root)
                     m_workStack.pop_back();
                 }
                 // attempt to cast to an object vector.
-                const ObjectPtrContainerChecker* vectorChecker =
+                const auto vectorChecker =
                     dynamic_cast<const ObjectPtrContainerChecker*>(PeekPointer(info.checker));
                 if (vectorChecker != nullptr)
                 {
@@ -638,7 +641,7 @@ class ConfigImpl : public Singleton<ConfigImpl>
 {
   public:
     // Keep Set and SetFailSafe since their errors are triggered
-    // by the underlying ObjecBase functions.
+    // by the underlying ObjectBase functions.
     /** \copydoc ns3::Config::Set() */
     void Set(std::string path, const AttributeValue& value);
     /** \copydoc ns3::Config::SetFailSafe() */
@@ -801,7 +804,7 @@ ConfigImpl::LookupMatches(std::string path)
         std::vector<std::string> m_contexts;
     } resolver = LookupMatchesResolver(path);
 
-    for (Roots::const_iterator i = m_roots.begin(); i != m_roots.end(); i++)
+    for (auto i = m_roots.begin(); i != m_roots.end(); i++)
     {
         resolver.Resolve(*i);
     }
@@ -828,7 +831,7 @@ ConfigImpl::UnregisterRootNamespaceObject(Ptr<Object> obj)
 {
     NS_LOG_FUNCTION(this << obj);
 
-    for (std::vector<Ptr<Object>>::iterator i = m_roots.begin(); i != m_roots.end(); i++)
+    for (auto i = m_roots.begin(); i != m_roots.end(); i++)
     {
         if (*i == obj)
         {
@@ -862,12 +865,12 @@ Reset()
         TypeId tid = TypeId::GetRegistered(i);
         for (uint32_t j = 0; j < tid.GetAttributeN(); j++)
         {
-            struct TypeId::AttributeInformation info = tid.GetAttribute(j);
+            TypeId::AttributeInformation info = tid.GetAttribute(j);
             tid.SetAttributeInitialValue(j, info.originalInitialValue);
         }
     }
     // now, let's reset the initial value of every global value.
-    for (GlobalValue::Iterator i = GlobalValue::Begin(); i != GlobalValue::End(); ++i)
+    for (auto i = GlobalValue::Begin(); i != GlobalValue::End(); ++i)
     {
         (*i)->ResetInitialValue();
     }
@@ -914,11 +917,11 @@ SetDefaultFailSafe(std::string fullName, const AttributeValue& value)
     {
         return false;
     }
-    struct TypeId::AttributeInformation info;
+    TypeId::AttributeInformation info;
     tid.LookupAttributeByName(paramName, &info);
     for (uint32_t j = 0; j < tid.GetAttributeN(); j++)
     {
-        struct TypeId::AttributeInformation tmp = tid.GetAttribute(j);
+        TypeId::AttributeInformation tmp = tid.GetAttribute(j);
         if (tmp.name == paramName)
         {
             Ptr<AttributeValue> v = tmp.checker->CreateValidValue(value);

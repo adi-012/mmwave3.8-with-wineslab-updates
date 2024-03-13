@@ -23,7 +23,7 @@
 #include "ns3/abort.h"
 #include "ns3/log.h"
 #include "ns3/packet.h"
-#include "ns3/tcp-option-ts.h"
+#include "ns3/simulator.h"
 
 #include <algorithm>
 #include <iostream>
@@ -68,16 +68,14 @@ TcpTxBuffer::TcpTxBuffer(uint32_t n)
 
 TcpTxBuffer::~TcpTxBuffer()
 {
-    PacketList::iterator it;
-
-    for (it = m_sentList.begin(); it != m_sentList.end(); ++it)
+    for (auto it = m_sentList.begin(); it != m_sentList.end(); ++it)
     {
         TcpTxItem* item = *it;
         m_sentSize -= item->m_packet->GetSize();
         delete item;
     }
 
-    for (it = m_appList.begin(); it != m_appList.end(); ++it)
+    for (auto it = m_appList.begin(); it != m_appList.end(); ++it)
     {
         TcpTxItem* item = *it;
         m_size -= item->m_packet->GetSize();
@@ -189,7 +187,7 @@ TcpTxBuffer::Add(Ptr<Packet> p)
     {
         if (p->GetSize() > 0)
         {
-            TcpTxItem* item = new TcpTxItem();
+            auto item = new TcpTxItem();
             item->m_packet = p->Copy();
             m_appList.insert(m_appList.end(), item);
             m_size += p->GetSize();
@@ -437,7 +435,7 @@ TcpTxBuffer::GetPacketFromList(PacketList& list,
     Ptr<Packet> currentPacket = nullptr;
     TcpTxItem* currentItem = nullptr;
     TcpTxItem* outItem = nullptr;
-    PacketList::iterator it = list.begin();
+    auto it = list.begin();
     SequenceNumber32 beginOfCurrentPacket = listStartFrom;
 
     while (it != list.end())
@@ -469,7 +467,7 @@ TcpTxBuffer::GetPacketFromList(PacketList& list,
                 NS_LOG_INFO("we are at " << beginOfCurrentPacket << " searching for " << seq
                                          << " and now we recurse because packet ends at "
                                          << beginOfCurrentPacket + currentPacket->GetSize());
-                TcpTxItem* firstPart = new TcpTxItem();
+                auto firstPart = new TcpTxItem();
                 SplitItems(firstPart, currentItem, seq - beginOfCurrentPacket);
 
                 // insert firstPart before currentItem
@@ -535,7 +533,7 @@ TcpTxBuffer::GetPacketFromList(PacketList& list,
             {
                 // the end is inside the current packet, but it isn't exactly
                 // the packet end. Just fragment, fix the list, and return.
-                TcpTxItem* firstPart = new TcpTxItem();
+                auto firstPart = new TcpTxItem();
                 SplitItems(firstPart, currentItem, numBytes);
 
                 // insert firstPart before currentItem
@@ -603,14 +601,14 @@ TcpTxBuffer::MergeItems(TcpTxItem* t1, TcpTxItem* t2) const
     {
         if (t1->m_retrans)
         {
-            TcpTxBuffer* self = const_cast<TcpTxBuffer*>(this);
+            auto self = const_cast<TcpTxBuffer*>(this);
             self->m_retrans -= t1->m_packet->GetSize();
             t1->m_retrans = false;
         }
         else
         {
             NS_ASSERT(t2->m_retrans);
-            TcpTxBuffer* self = const_cast<TcpTxBuffer*>(this);
+            auto self = const_cast<TcpTxBuffer*>(this);
             self->m_retrans -= t2->m_packet->GetSize();
             t2->m_retrans = false;
         }
@@ -681,7 +679,7 @@ TcpTxBuffer::DiscardUpTo(const SequenceNumber32& seq, const Callback<void, TcpTx
     // Scan the buffer and discard packets
     uint32_t offset = seq - m_firstByteSeq.Get(); // Number of bytes to remove
     uint32_t pktSize;
-    PacketList::iterator i = m_sentList.begin();
+    auto i = m_sentList.begin();
     while (m_size > 0 && offset > 0)
     {
         if (i == m_sentList.end())
@@ -790,7 +788,7 @@ TcpTxBuffer::Update(const TcpOptionSack::SackList& list, const Callback<void, Tc
 
     for (auto option_it = list.begin(); option_it != list.end(); ++option_it)
     {
-        PacketList::iterator item_it = m_sentList.begin();
+        auto item_it = m_sentList.begin();
         SequenceNumber32 beginOfCurrentPacket = m_firstByteSeq;
 
         if (m_firstByteSeq + m_sentSize < (*option_it).first)
@@ -928,9 +926,6 @@ TcpTxBuffer::IsLost(const SequenceNumber32& seq) const
 {
     NS_LOG_FUNCTION(this << seq);
 
-    SequenceNumber32 beginOfCurrentPacket = m_firstByteSeq;
-    PacketList::const_iterator it;
-
     if (seq >= m_highestSack.second)
     {
         return false;
@@ -938,25 +933,23 @@ TcpTxBuffer::IsLost(const SequenceNumber32& seq) const
 
     // In theory, using a map and hints when inserting elements can improve
     // performance
-    for (it = m_sentList.begin(); it != m_sentList.end(); ++it)
+    for (auto it = m_sentList.begin(); it != m_sentList.end(); ++it)
     {
         // Search for the right iterator before calling IsLost()
-        if (beginOfCurrentPacket >= seq)
+        if ((*it)->m_startSeq <= seq && seq < (*it)->m_startSeq + (*it)->m_packet->GetSize())
         {
-            if ((*it)->m_lost == true)
+            if ((*it)->m_lost)
             {
                 NS_LOG_INFO("seq=" << seq << " is lost because of lost flag");
                 return true;
             }
 
-            if ((*it)->m_sacked == true)
+            if ((*it)->m_sacked)
             {
                 NS_LOG_INFO("seq=" << seq << " is not lost because of sacked flag");
                 return false;
             }
         }
-
-        beginOfCurrentPacket += (*it)->m_packet->GetSize();
     }
 
     return false;
@@ -980,18 +973,17 @@ TcpTxBuffer::NextSeg(SequenceNumber32* seq, SequenceNumber32* seqHigh, bool isRe
      *
      *     (1.c) IsLost (S2) returns true.
      */
-    PacketList::const_iterator it;
     TcpTxItem* item;
     SequenceNumber32 seqPerRule3;
     bool isSeqPerRule3Valid = false;
     SequenceNumber32 beginOfCurrentPkt = m_firstByteSeq;
 
-    for (it = m_sentList.begin(); it != m_sentList.end(); ++it)
+    for (auto it = m_sentList.begin(); it != m_sentList.end(); ++it)
     {
         item = *it;
 
         // Condition 1.a , 1.b , and 1.c
-        if (item->m_retrans == false && item->m_sacked == false)
+        if (!item->m_retrans && !item->m_sacked)
         {
             if (item->m_lost)
             {
@@ -1020,7 +1012,7 @@ TcpTxBuffer::NextSeg(SequenceNumber32* seq, SequenceNumber32* seqHigh, bool isRe
      */
     if (SizeFromSequence(m_firstByteSeq + m_sentSize) > 0)
     {
-        if (m_sentSize <= m_rWndCallback())
+        if (m_sentSize < m_rWndCallback())
         {
             NS_LOG_INFO("There is unsent data. Send it");
             *seq = m_firstByteSeq + m_sentSize;
@@ -1092,7 +1084,6 @@ TcpTxBuffer::BytesInFlight() const
 uint32_t
 TcpTxBuffer::BytesInFlightRFC() const
 {
-    PacketList::const_iterator it;
     TcpTxItem* item;
     uint32_t size = 0; // "pipe" in RFC
     SequenceNumber32 beginOfCurrentPkt = m_firstByteSeq;
@@ -1104,7 +1095,7 @@ TcpTxBuffer::BytesInFlightRFC() const
     // After initializing pipe to zero, the following steps are taken for each
     // octet 'S1' in the sequence space between HighACK and HighData that has not
     // been SACKed:
-    for (it = m_sentList.begin(); it != m_sentList.end(); ++it)
+    for (auto it = m_sentList.begin(); it != m_sentList.end(); ++it)
     {
         item = *it;
         totalSize += item->m_packet->GetSize();
@@ -1166,7 +1157,7 @@ TcpTxBuffer::IsLostRFC(const SequenceNumber32& seq, const PacketList::const_iter
     Ptr<const Packet> current;
     SequenceNumber32 beginOfCurrentPacket = seq;
 
-    if ((*segment)->m_sacked == true)
+    if ((*segment)->m_sacked)
     {
         return false;
     }
@@ -1472,14 +1463,13 @@ operator<<(std::ostream& os, const TcpTxItem& item)
 std::ostream&
 operator<<(std::ostream& os, const TcpTxBuffer& tcpTxBuf)
 {
-    TcpTxBuffer::PacketList::const_iterator it;
     std::stringstream ss;
     SequenceNumber32 beginOfCurrentPacket = tcpTxBuf.m_firstByteSeq;
     uint32_t sentSize = 0;
     uint32_t appSize = 0;
 
     Ptr<const Packet> p;
-    for (it = tcpTxBuf.m_sentList.begin(); it != tcpTxBuf.m_sentList.end(); ++it)
+    for (auto it = tcpTxBuf.m_sentList.begin(); it != tcpTxBuf.m_sentList.end(); ++it)
     {
         p = (*it)->GetPacket();
         ss << "{";
@@ -1489,7 +1479,7 @@ operator<<(std::ostream& os, const TcpTxBuffer& tcpTxBuf)
         beginOfCurrentPacket += p->GetSize();
     }
 
-    for (it = tcpTxBuf.m_appList.begin(); it != tcpTxBuf.m_appList.end(); ++it)
+    for (auto it = tcpTxBuf.m_appList.begin(); it != tcpTxBuf.m_appList.end(); ++it)
     {
         appSize += (*it)->GetPacket()->GetSize();
     }

@@ -35,6 +35,11 @@ SuperframeField::SuperframeField()
     SetAssocPermit(false);
 }
 
+SuperframeField::SuperframeField(uint16_t bitmap)
+{
+    SetSuperframe(bitmap);
+}
+
 void
 SuperframeField::SetSuperframe(uint16_t superFrmSpec)
 {
@@ -156,28 +161,6 @@ SuperframeField::GetSuperframe() const
     return superframe;
 }
 
-uint32_t
-SuperframeField::GetSerializedSize() const
-{
-    return 2; // 2 Octets (superframeSpec)
-}
-
-Buffer::Iterator
-SuperframeField::Serialize(Buffer::Iterator i) const
-{
-    i.WriteHtolsbU16(GetSuperframe());
-    return i;
-}
-
-Buffer::Iterator
-SuperframeField::Deserialize(Buffer::Iterator i)
-{
-    uint16_t superframe = i.ReadLsbtohU16();
-    SetSuperframe(superframe);
-
-    return i;
-}
-
 std::ostream&
 operator<<(std::ostream& os, const SuperframeField& superframeField)
 {
@@ -268,18 +251,18 @@ GtsFields::Serialize(Buffer::Iterator i) const
 
     if (m_gtsSpecDescCount > 0)
     {
-        uint8_t gtsDescStartAndLenght;
+        uint8_t gtsDescStartAndLength;
         i.WriteU8(GetGtsDirectionField());
 
         for (int j = 0; j < m_gtsSpecDescCount; j++)
         {
             WriteTo(i, m_gtsList[j].m_gtsDescDevShortAddr);
 
-            gtsDescStartAndLenght =
+            gtsDescStartAndLength =
                 (m_gtsList[j].m_gtsDescStartSlot & 0x0F) | // GTS descriptor bits 16-19
                 (m_gtsList[j].m_gtsDescLength & 0xF0);     // GTS descriptor bits 20-23
 
-            i.WriteU8(gtsDescStartAndLenght);
+            i.WriteU8(gtsDescStartAndLength);
         }
     }
     return i;
@@ -296,14 +279,14 @@ GtsFields::Deserialize(Buffer::Iterator i)
         uint8_t gtsDirectionField = i.ReadU8();
         SetGtsDirectionField(gtsDirectionField);
 
-        uint8_t gtsDescStartAndLenght;
+        uint8_t gtsDescStartAndLength;
         for (int j = 0; j < m_gtsSpecDescCount; j++)
         {
             ReadFrom(i, m_gtsList[j].m_gtsDescDevShortAddr);
 
-            gtsDescStartAndLenght = i.ReadU8();
-            m_gtsList[j].m_gtsDescStartSlot = (gtsDescStartAndLenght) & (0x0F);
-            m_gtsList[j].m_gtsDescLength = (gtsDescStartAndLenght >> 4) & (0x0F);
+            gtsDescStartAndLength = i.ReadU8();
+            m_gtsList[j].m_gtsDescStartSlot = (gtsDescStartAndLength) & (0x0F);
+            m_gtsList[j].m_gtsDescLength = (gtsDescStartAndLength >> 4) & (0x0F);
         }
     }
     return i;
@@ -492,41 +475,37 @@ CapabilityField::CapabilityField()
     m_allocAddr = true;
 }
 
-uint32_t
-CapabilityField::GetSerializedSize() const
+CapabilityField::CapabilityField(uint8_t bitmap)
 {
-    return 1;
+    SetCapability(bitmap);
 }
 
-Buffer::Iterator
-CapabilityField::Serialize(Buffer::Iterator i) const
+uint8_t
+CapabilityField::GetCapability() const
 {
     uint8_t capability;
 
-    capability = 0;                                          //!< Bit 0 (reserved)
-    capability = (m_deviceType << 1) & (0x01 << 1);          //!< Bit 1
+    capability = (m_reservedBit0) & (0x01);                  //!< Bit 0 (reserved)
+    capability |= (m_deviceType << 1) & (0x01 << 1);         //!< Bit 1
     capability |= (m_powerSource << 2) & (0x01 << 2);        //!< Bit 2
     capability |= (m_receiverOnWhenIdle << 3) & (0x01 << 3); //!< Bit 3
-                                                             //!< Bit 4-5 (reserved)
+    capability |= (m_reservedBit45 << 4) & (0x03 << 4);      //!< Bit 4-5 (reserved)
     capability |= (m_securityCap << 6) & (0x01 << 6);        //!< Bit 6
     capability |= (m_allocAddr << 7) & (0x01 << 7);          //!< Bit 7
-    i.WriteU8(capability);
-    return i;
+
+    return capability;
 }
 
-Buffer::Iterator
-CapabilityField::Deserialize(Buffer::Iterator i)
+void
+CapabilityField::SetCapability(uint8_t bitmap)
 {
-    uint8_t capability = i.ReadU8();
-    //!< Bit 0 (reserved)
-    m_deviceType = (capability >> 1) & (0x01);         //!< Bit 1
-    m_powerSource = (capability >> 2) & (0x01);        //!< Bit 2
-    m_receiverOnWhenIdle = (capability >> 3) & (0x01); //!< Bit 3
-                                                       //!< Bit 4-5 (reserved)
-    m_securityCap = (capability >> 6) & (0x01);        //!< Bit 6
-    m_allocAddr = (capability >> 7) & (0x01);          //!< Bit 7
-
-    return i;
+    m_reservedBit0 = (bitmap) & (0x01);            //!< Bit 0 (reserved)
+    m_deviceType = (bitmap >> 1) & (0x01);         //!< Bit 1
+    m_powerSource = (bitmap >> 2) & (0x01);        //!< Bit 2
+    m_receiverOnWhenIdle = (bitmap >> 3) & (0x01); //!< Bit 3
+    m_reservedBit45 = (bitmap >> 4) & (0x03);      //!< Bit 4-5 (reserved)
+    m_securityCap = (bitmap >> 6) & (0x01);        //!< Bit 6
+    m_allocAddr = (bitmap >> 7) & (0x01);          //!< Bit 7
 }
 
 bool

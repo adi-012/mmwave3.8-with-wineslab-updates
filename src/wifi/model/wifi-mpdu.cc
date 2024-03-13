@@ -28,18 +28,18 @@
 
 #include "ns3/log.h"
 #include "ns3/packet.h"
-#include "ns3/simulator.h"
 
 namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("WifiMpdu");
 
-WifiMpdu::WifiMpdu(Ptr<const Packet> p, const WifiMacHeader& header)
+WifiMpdu::WifiMpdu(Ptr<const Packet> p, const WifiMacHeader& header, Time stamp)
     : m_header(header)
 {
     auto& original = std::get<OriginalInfo>(m_instanceInfo);
     original.m_packet = p;
+    original.m_timestamp = stamp;
 
     if (header.IsQosData() && header.IsQosAmsdu())
     {
@@ -115,6 +115,17 @@ WifiMpdu::GetPacket() const
     return GetOriginalInfo().m_packet;
 }
 
+Time
+WifiMpdu::GetTimestamp() const
+{
+    if (auto original = std::get_if<ORIGINAL>(&m_instanceInfo))
+    {
+        return original->m_timestamp;
+    }
+    const auto& origInstanceInfo = std::get<Ptr<WifiMpdu>>(m_instanceInfo)->m_instanceInfo;
+    return std::get<OriginalInfo>(origInstanceInfo).m_timestamp;
+}
+
 const WifiMacHeader&
 WifiMpdu::GetHeader() const
 {
@@ -163,9 +174,15 @@ WifiMpdu::GetProtocolDataUnit() const
 void
 WifiMpdu::Aggregate(Ptr<const WifiMpdu> msdu)
 {
-    NS_ASSERT(msdu);
-    NS_LOG_FUNCTION(this << *msdu);
-    NS_ABORT_MSG_IF(!msdu->GetHeader().IsQosData() || msdu->GetHeader().IsQosAmsdu(),
+    if (msdu)
+    {
+        NS_LOG_FUNCTION(this << *msdu);
+    }
+    else
+    {
+        NS_LOG_FUNCTION(this);
+    }
+    NS_ABORT_MSG_IF(msdu && (!msdu->GetHeader().IsQosData() || msdu->GetHeader().IsQosAmsdu()),
                     "Only QoS data frames that do not contain an A-MSDU can be aggregated");
     NS_ABORT_MSG_IF(!std::holds_alternative<OriginalInfo>(m_instanceInfo),
                     "This method can only be called on the original version of the MPDU");
@@ -195,7 +212,10 @@ WifiMpdu::Aggregate(Ptr<const WifiMpdu> msdu)
         // to be set to the BSSID, but neither Address 1 nor Address 2 contain the
         // BSSID. Hence, it is left up to the caller to set these Address fields.
     }
-    DoAggregate(msdu);
+    if (msdu)
+    {
+        DoAggregate(msdu);
+    }
 }
 
 void

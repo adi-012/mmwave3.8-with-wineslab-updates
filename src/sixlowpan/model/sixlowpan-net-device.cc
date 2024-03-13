@@ -83,16 +83,6 @@ SixLowPanNetDevice::GetTypeId()
                           UintegerValue(0x0),
                           MakeUintegerAccessor(&SixLowPanNetDevice::m_compressionThreshold),
                           MakeUintegerChecker<uint32_t>())
-            .AddAttribute("ForceEtherType",
-                          "Force a specific EtherType in L2 frames.",
-                          BooleanValue(false),
-                          MakeBooleanAccessor(&SixLowPanNetDevice::m_forceEtherType),
-                          MakeBooleanChecker())
-            .AddAttribute("EtherType",
-                          "The specific EtherType to be used in L2 frames.",
-                          UintegerValue(0xFFFF),
-                          MakeUintegerAccessor(&SixLowPanNetDevice::m_etherType),
-                          MakeUintegerChecker<uint16_t>())
             .AddAttribute("UseMeshUnder",
                           "Use a mesh-under routing protocol.",
                           BooleanValue(false),
@@ -158,10 +148,13 @@ SixLowPanNetDevice::SetNetDevice(Ptr<NetDevice> device)
 
     NS_LOG_DEBUG("RegisterProtocolHandler for " << device->GetInstanceTypeId().GetName());
 
-    uint16_t protocolType = 0;
-    if (m_forceEtherType)
+    uint16_t protocolType = PROT_NUMBER;
+    if (device->GetInstanceTypeId().GetName() == "ns3::LrWpanNetDevice")
     {
-        protocolType = m_etherType;
+        // LrWpanNetDevice does not have a protocol number in the frame.
+        // Hence, we must register for any protocol, and assume that any
+        // packet is 6LoWPAN.
+        protocolType = 0;
     }
     m_node->RegisterProtocolHandler(MakeCallback(&SixLowPanNetDevice::ReceiveFromDevice, this),
                                     protocolType,
@@ -192,7 +185,7 @@ SixLowPanNetDevice::DoDispose()
         m_timeoutEvent.Cancel();
     }
 
-    for (MapFragmentsI_t iter = m_fragments.begin(); iter != m_fragments.end(); iter++)
+    for (auto iter = m_fragments.begin(); iter != m_fragments.end(); iter++)
     {
         iter->second = nullptr;
     }
@@ -596,10 +589,7 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
 
     bool useMesh = m_meshUnder;
 
-    if (m_forceEtherType)
-    {
-        protocolNumber = m_etherType;
-    }
+    protocolNumber = PROT_NUMBER;
 
     if (m_useIphc)
     {
@@ -666,9 +656,8 @@ SixLowPanNetDevice::DoSend(Ptr<Packet> packet,
         // fragment
         std::list<Ptr<Packet>> fragmentList;
         DoFragmentation(packet, origPacketSize, origHdrSize, extraHdrSize, fragmentList);
-        std::list<Ptr<Packet>>::iterator it;
         bool success = true;
-        for (it = fragmentList.begin(); it != fragmentList.end(); it++)
+        for (auto it = fragmentList.begin(); it != fragmentList.end(); it++)
         {
             NS_LOG_DEBUG("SixLowPanNetDevice::Send (Fragment) " << **it);
             m_txTrace(*it, this, GetIfIndex());
@@ -1095,7 +1084,6 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
         uint8_t addressBuf[16];
 
         // This is just to limit the scope of some variables.
-        if (true)
         {
             Ipv6Address srcAddr = ipHeader.GetSource();
             uint8_t srcContextId;
@@ -1197,7 +1185,6 @@ SixLowPanNetDevice::CompressLowPanIphc(Ptr<Packet> packet, const Address& src, c
         }
 
         // This is just to limit the scope of some variables.
-        if (true)
         {
             Ipv6Address dstAddr = ipHeader.GetDestination();
             dstAddr.GetBytes(addressBuf);
@@ -1427,8 +1414,8 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
                 return true;
             }
 
-            uint8_t contexPrefix[16];
-            m_contextTable[contextId].contextPrefix.GetBytes(contexPrefix);
+            uint8_t contextPrefix[16];
+            m_contextTable[contextId].contextPrefix.GetBytes(contextPrefix);
             uint8_t contextLength = m_contextTable[contextId].contextPrefix.GetPrefixLength();
 
             uint8_t srcAddress[16] = {};
@@ -1453,13 +1440,13 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
             // Do not combine the prefix - we want to override the bytes.
             for (uint8_t i = 0; i < bytesToCopy; i++)
             {
-                srcAddress[i] = contexPrefix[i];
+                srcAddress[i] = contextPrefix[i];
             }
             if (bitsToCopy)
             {
                 uint8_t addressBitMask = (1 << (8 - bitsToCopy)) - 1;
                 uint8_t prefixBitMask = ~addressBitMask;
-                srcAddress[bytesToCopy] = (contexPrefix[bytesToCopy] & prefixBitMask) |
+                srcAddress[bytesToCopy] = (contextPrefix[bytesToCopy] & prefixBitMask) |
                                           (srcAddress[bytesToCopy] & addressBitMask);
             }
             ipHeader.SetSource(Ipv6Address::Deserialize(srcAddress));
@@ -1524,11 +1511,11 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
             return true;
         }
 
-        uint8_t contexPrefix[16];
-        m_contextTable[contextId].contextPrefix.GetBytes(contexPrefix);
+        uint8_t contextPrefix[16];
+        m_contextTable[contextId].contextPrefix.GetBytes(contextPrefix);
         uint8_t contextLength = m_contextTable[contextId].contextPrefix.GetPrefixLength();
 
-        if (encoding.GetM() == false)
+        if (!encoding.GetM())
         {
             // unicast
             uint8_t dstAddress[16] = {};
@@ -1553,13 +1540,13 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
             // Do not combine the prefix - we want to override the bytes.
             for (uint8_t i = 0; i < bytesToCopy; i++)
             {
-                dstAddress[i] = contexPrefix[i];
+                dstAddress[i] = contextPrefix[i];
             }
             if (bitsToCopy)
             {
                 uint8_t addressBitMask = (1 << (8 - bitsToCopy)) - 1;
                 uint8_t prefixBitMask = ~addressBitMask;
-                dstAddress[bytesToCopy] = (contexPrefix[bytesToCopy] & prefixBitMask) |
+                dstAddress[bytesToCopy] = (contextPrefix[bytesToCopy] & prefixBitMask) |
                                           (dstAddress[bytesToCopy] & addressBitMask);
             }
             ipHeader.SetDestination(Ipv6Address::Deserialize(dstAddress));
@@ -1572,7 +1559,7 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
             dstAddress[0] = 0xff;
             memcpy(dstAddress + 1, encoding.GetDstInlinePart(), 2);
             dstAddress[3] = contextLength;
-            memcpy(dstAddress + 4, contexPrefix, 8);
+            memcpy(dstAddress + 4, contextPrefix, 8);
             memcpy(dstAddress + 12, encoding.GetDstInlinePart() + 2, 4);
             ipHeader.SetDestination(Ipv6Address::Deserialize(dstAddress));
         }
@@ -1580,7 +1567,7 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
     else
     {
         // Destination address compression uses stateless compression.
-        if (encoding.GetM() == false)
+        if (!encoding.GetM())
         {
             // unicast
             if (encoding.GetDam() == SixLowPanIphc::HC_INLINE)
@@ -1697,7 +1684,7 @@ SixLowPanNetDevice::DecompressLowPanIphc(Ptr<Packet> packet, const Address& src,
                                                                   dst,
                                                                   ipHeader.GetSource(),
                                                                   ipHeader.GetDestination());
-            if (retval.second == true)
+            if (retval.second)
             {
                 return true;
             }
@@ -2345,7 +2332,7 @@ SixLowPanNetDevice::DoFragmentation(Ptr<Packet> packet,
     uint32_t packetSize = packet->GetSize();
     uint32_t compressedHeaderSize = packetSize - (origPacketSize - origHdrSize);
 
-    uint16_t tag = uint16_t(m_rng->GetValue(0, 65535));
+    auto tag = static_cast<uint16_t>(m_rng->GetValue(0, 65535));
     NS_LOG_LOGIC("random tag " << tag << " - test " << packetSize);
 
     // first fragment
@@ -2476,18 +2463,17 @@ SixLowPanNetDevice::ProcessFragment(Ptr<Packet>& packet,
 
     Ptr<Fragments> fragments;
 
-    MapFragments_t::iterator it = m_fragments.find(key);
+    auto it = m_fragments.find(key);
     if (it == m_fragments.end())
     {
         // erase the oldest packet.
         if (m_fragmentReassemblyListSize && (m_fragments.size() >= m_fragmentReassemblyListSize))
         {
-            FragmentsTimeoutsListI_t iter = m_timeoutEventList.begin();
+            auto iter = m_timeoutEventList.begin();
             FragmentKey_t oldestKey = std::get<1>(*iter);
 
-            std::list<Ptr<Packet>> storedFragments = m_fragments[oldestKey]->GetFraments();
-            for (std::list<Ptr<Packet>>::iterator fragIter = storedFragments.begin();
-                 fragIter != storedFragments.end();
+            std::list<Ptr<Packet>> storedFragments = m_fragments[oldestKey]->GetFragments();
+            for (auto fragIter = storedFragments.begin(); fragIter != storedFragments.end();
                  fragIter++)
             {
                 m_dropTrace(DROP_FRAGMENT_BUFFER_FULL, *fragIter, this, GetIfIndex());
@@ -2502,7 +2488,7 @@ SixLowPanNetDevice::ProcessFragment(Ptr<Packet>& packet,
         m_fragments.insert(std::make_pair(key, fragments));
         uint32_t ifIndex = GetIfIndex();
 
-        FragmentsTimeoutsListI_t iter = SetTimeout(key, ifIndex);
+        auto iter = SetTimeout(key, ifIndex);
         fragments->SetTimeoutIter(iter);
     }
     else
@@ -2594,9 +2580,7 @@ SixLowPanNetDevice::Fragments::IsEntire() const
 
     if (ret)
     {
-        for (std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator it = m_fragments.begin();
-             it != m_fragments.end();
-             it++)
+        for (auto it = m_fragments.begin(); it != m_fragments.end(); it++)
         {
             // overlapping fragments should not exist
             NS_LOG_LOGIC("Checking overlaps " << lastEndOffset << " - " << it->second);
@@ -2612,11 +2596,7 @@ SixLowPanNetDevice::Fragments::IsEntire() const
         }
     }
 
-    if (ret && (lastEndOffset == m_packetSize))
-    {
-        return true;
-    }
-    return false;
+    return ret && lastEndOffset == m_packetSize;
 }
 
 Ptr<Packet>
@@ -2624,7 +2604,7 @@ SixLowPanNetDevice::Fragments::GetPacket() const
 {
     NS_LOG_FUNCTION(this);
 
-    std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator it = m_fragments.begin();
+    auto it = m_fragments.begin();
 
     Ptr<Packet> p = Create<Packet>();
     uint16_t lastEndOffset = 0;
@@ -2658,11 +2638,10 @@ SixLowPanNetDevice::Fragments::SetPacketSize(uint32_t packetSize)
 }
 
 std::list<Ptr<Packet>>
-SixLowPanNetDevice::Fragments::GetFraments() const
+SixLowPanNetDevice::Fragments::GetFragments() const
 {
     std::list<Ptr<Packet>> fragments;
-    std::list<std::pair<Ptr<Packet>, uint16_t>>::const_iterator iter;
-    for (iter = m_fragments.begin(); iter != m_fragments.end(); iter++)
+    for (auto iter = m_fragments.begin(); iter != m_fragments.end(); iter++)
     {
         fragments.push_back(iter->first);
     }
@@ -2686,11 +2665,9 @@ SixLowPanNetDevice::HandleFragmentsTimeout(FragmentKey_t key, uint32_t iif)
 {
     NS_LOG_FUNCTION(this);
 
-    MapFragments_t::iterator it = m_fragments.find(key);
-    std::list<Ptr<Packet>> storedFragments = it->second->GetFraments();
-    for (std::list<Ptr<Packet>>::iterator fragIter = storedFragments.begin();
-         fragIter != storedFragments.end();
-         fragIter++)
+    auto it = m_fragments.find(key);
+    std::list<Ptr<Packet>> storedFragments = it->second->GetFragments();
+    for (auto fragIter = storedFragments.begin(); fragIter != storedFragments.end(); fragIter++)
     {
         m_dropTrace(DROP_FRAGMENT_TIMEOUT, *fragIter, this, iif);
     }
@@ -2725,9 +2702,9 @@ SixLowPanNetDevice::SetTimeout(FragmentKey_t key, uint32_t iif)
     }
     m_timeoutEventList.emplace_back(Simulator::Now() + m_fragmentExpirationTimeout, key, iif);
 
-    SixLowPanNetDevice::FragmentsTimeoutsListI_t iter = --m_timeoutEventList.end();
+    auto iter = --m_timeoutEventList.end();
 
-    return (iter);
+    return iter;
 }
 
 void
@@ -2873,7 +2850,7 @@ SixLowPanNetDevice::FindUnicastCompressionContext(Ipv6Address address, uint8_t& 
     {
         ContextEntry context = iter.second;
 
-        if ((context.compressionAllowed == true) && (context.validLifetime > Simulator::Now()))
+        if (context.compressionAllowed && context.validLifetime > Simulator::Now())
         {
             if (address.HasPrefix(context.contextPrefix))
             {
@@ -2902,7 +2879,7 @@ SixLowPanNetDevice::FindMulticastCompressionContext(Ipv6Address address, uint8_t
     {
         ContextEntry context = iter.second;
 
-        if ((context.compressionAllowed == true) && (context.validLifetime > Simulator::Now()))
+        if (context.compressionAllowed && context.validLifetime > Simulator::Now())
         {
             uint8_t contextLength = context.contextPrefix.GetPrefixLength();
 

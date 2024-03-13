@@ -32,6 +32,7 @@
 using namespace ns3;
 
 /**
+ * \ingroup uan
  *
  * This example shows the usage of UDP over 6LoWPAN to transfer data.
  * Two nodes are sending their remaining energy percentage (1 byte)
@@ -131,7 +132,7 @@ UanExperiment::SetupCommunications()
     UanHelper uanHelper;
     NetDeviceContainer netDeviceContainer = uanHelper.Install(m_nodes, channel);
     EnergySourceContainer energySourceContainer;
-    NodeContainer::Iterator node = m_nodes.Begin();
+    auto node = m_nodes.Begin();
     while (node != m_nodes.End())
     {
         energySourceContainer.Add((*node)->GetObject<EnergySourceContainer>()->Get(0));
@@ -185,7 +186,7 @@ UanExperiment::PrintReceivedPacket(Ptr<Socket> socket)
 void
 UanExperiment::SetupApplications()
 {
-    NodeContainer::Iterator node = m_nodes.Begin();
+    auto node = m_nodes.Begin();
     while (node != m_nodes.End())
     {
         m_sockets[*node] =
@@ -206,7 +207,7 @@ UanExperiment::SendPackets()
 {
     Ptr<UniformRandomVariable> uniformRandomVariable = CreateObject<UniformRandomVariable>();
 
-    NodeContainer::Iterator node = m_nodes.Begin();
+    auto node = m_nodes.Begin();
     Ipv6Address dst =
         (*node)->GetObject<Ipv6L3Protocol>()->GetInterface(1)->GetAddress(1).GetAddress();
     node++;
@@ -247,9 +248,7 @@ UanExperiment::Prepare()
 void
 UanExperiment::Teardown()
 {
-    std::map<Ptr<Node>, Ptr<Socket>>::iterator socket;
-
-    for (socket = m_sockets.begin(); socket != m_sockets.end(); socket++)
+    for (auto socket = m_sockets.begin(); socket != m_sockets.end(); socket++)
     {
         socket->second->Close();
     }

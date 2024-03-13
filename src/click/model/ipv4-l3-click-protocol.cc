@@ -18,15 +18,14 @@
 // Author: Lalith Suresh <suresh.lalith@gmail.com>
 //
 
-#ifdef NS3_CLICK
-
 #include "ipv4-l3-click-protocol.h"
+
+#include "ipv4-click-routing.h"
 
 #include "ns3/arp-l3-protocol.h"
 #include "ns3/ethernet-header.h"
 #include "ns3/icmpv4-l4-protocol.h"
 #include "ns3/ip-l4-protocol.h"
-#include "ns3/ipv4-click-routing.h"
 #include "ns3/ipv4-raw-socket-impl.h"
 #include "ns3/llc-snap-header.h"
 #include "ns3/loopback-net-device.h"
@@ -80,13 +79,13 @@ void
 Ipv4L3ClickProtocol::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    for (L4List_t::iterator i = m_protocols.begin(); i != m_protocols.end(); ++i)
+    for (auto i = m_protocols.begin(); i != m_protocols.end(); ++i)
     {
         i->second = nullptr;
     }
     m_protocols.clear();
 
-    for (Ipv4InterfaceList::iterator i = m_interfaces.begin(); i != m_interfaces.end(); ++i)
+    for (auto i = m_interfaces.begin(); i != m_interfaces.end(); ++i)
     {
         *i = nullptr;
     }
@@ -153,8 +152,7 @@ Ipv4L3ClickProtocol::GetInterfaceForAddress(Ipv4Address address) const
     NS_LOG_FUNCTION(this << address);
 
     int32_t interface = 0;
-    for (Ipv4InterfaceList::const_iterator i = m_interfaces.begin(); i != m_interfaces.end();
-         i++, interface++)
+    for (auto i = m_interfaces.begin(); i != m_interfaces.end(); i++, interface++)
     {
         for (uint32_t j = 0; j < (*i)->GetNAddresses(); j++)
         {
@@ -174,8 +172,7 @@ Ipv4L3ClickProtocol::GetInterfaceForPrefix(Ipv4Address address, Ipv4Mask mask) c
     NS_LOG_FUNCTION(this << address << mask);
 
     int32_t interface = 0;
-    for (Ipv4InterfaceList::const_iterator i = m_interfaces.begin(); i != m_interfaces.end();
-         i++, interface++)
+    for (auto i = m_interfaces.begin(); i != m_interfaces.end(); i++, interface++)
     {
         for (uint32_t j = 0; j < (*i)->GetNAddresses(); j++)
         {
@@ -194,7 +191,7 @@ Ipv4L3ClickProtocol::GetInterfaceForDevice(Ptr<const NetDevice> device) const
 {
     NS_LOG_FUNCTION(this << device->GetIfIndex());
 
-    Ipv4InterfaceReverseContainer::const_iterator iter = m_reverseInterfacesContainer.find(device);
+    auto iter = m_reverseInterfacesContainer.find(device);
     if (iter != m_reverseInterfacesContainer.end())
     {
         return (*iter).second;
@@ -229,11 +226,10 @@ Ipv4L3ClickProtocol::IsDestinationAddress(Ipv4Address address, uint32_t iif) con
 #ifdef NOTYET
         if (MulticastCheckGroup(iif, address))
 #endif
-            if (true)
-            {
-                NS_LOG_LOGIC("For me (Ipv4Addr multicast address");
-                return true;
-            }
+        {
+            NS_LOG_LOGIC("For me (Ipv4Addr multicast address");
+            return true;
+        }
     }
 
     if (address.IsBroadcast())
@@ -242,7 +238,7 @@ Ipv4L3ClickProtocol::IsDestinationAddress(Ipv4Address address, uint32_t iif) con
         return true;
     }
 
-    if (GetWeakEsModel()) // Check other interfaces
+    if (!GetStrongEndSystemModel()) // Check other interfaces
     {
         for (uint32_t j = 0; j < GetNInterfaces(); j++)
         {
@@ -276,7 +272,7 @@ Ipv4L3ClickProtocol::SetIpForward(bool forward)
 {
     NS_LOG_FUNCTION(this << forward);
     m_ipForward = forward;
-    for (Ipv4InterfaceList::const_iterator i = m_interfaces.begin(); i != m_interfaces.end(); i++)
+    for (auto i = m_interfaces.begin(); i != m_interfaces.end(); i++)
     {
         (*i)->SetForwarding(forward);
     }
@@ -291,13 +287,25 @@ Ipv4L3ClickProtocol::GetIpForward() const
 void
 Ipv4L3ClickProtocol::SetWeakEsModel(bool model)
 {
-    m_weakEsModel = model;
+    m_strongEndSystemModel = !model;
 }
 
 bool
 Ipv4L3ClickProtocol::GetWeakEsModel() const
 {
-    return m_weakEsModel;
+    return !m_strongEndSystemModel;
+}
+
+void
+Ipv4L3ClickProtocol::SetStrongEndSystemModel(bool model)
+{
+    m_strongEndSystemModel = model;
+}
+
+bool
+Ipv4L3ClickProtocol::GetStrongEndSystemModel() const
+{
+    return m_strongEndSystemModel;
 }
 
 Ptr<NetDevice>
@@ -365,7 +373,7 @@ void
 Ipv4L3ClickProtocol::DeleteRawSocket(Ptr<Socket> socket)
 {
     NS_LOG_FUNCTION(this << socket);
-    for (SocketList::iterator i = m_sockets.begin(); i != m_sockets.end(); ++i)
+    for (auto i = m_sockets.begin(); i != m_sockets.end(); ++i)
     {
         if ((*i) == socket)
         {
@@ -470,7 +478,7 @@ Ipv4L3ClickProtocol::SourceAddressSelection(uint32_t interfaceIdx, Ipv4Address d
         Ipv4InterfaceAddress test = GetAddress(interfaceIdx, i);
         if (test.GetLocal().CombineMask(test.GetMask()) == dest.CombineMask(test.GetMask()))
         {
-            if (test.IsSecondary() == false)
+            if (!test.IsSecondary())
             {
                 return test.GetLocal();
             }
@@ -677,7 +685,7 @@ Ipv4L3ClickProtocol::BuildHeader(Ipv4Address source,
     ipHeader.SetProtocol(protocol);
     ipHeader.SetPayloadSize(payloadSize);
     ipHeader.SetTtl(ttl);
-    if (mayFragment == true)
+    if (mayFragment)
     {
         ipHeader.SetMayFragment();
         ipHeader.SetIdentification(m_identification);
@@ -786,7 +794,7 @@ Ipv4L3ClickProtocol::Receive(Ptr<NetDevice> device,
     NS_LOG_LOGIC("Packet from " << from << " received on node " << m_node->GetId());
 
     // Forward packet to raw sockets, if any
-    if (protocol == Ipv4L3ClickProtocol::PROT_NUMBER && m_sockets.size() > 0)
+    if (protocol == Ipv4L3ClickProtocol::PROT_NUMBER && !m_sockets.empty())
     {
         Ptr<Packet> packetForRawSocket = p->Copy();
         int32_t interface = GetInterfaceForDevice(device);
@@ -806,7 +814,7 @@ Ipv4L3ClickProtocol::Receive(Ptr<NetDevice> device,
         }
         packetForRawSocket->RemoveHeader(ipHeader);
 
-        for (SocketList::iterator i = m_sockets.begin(); i != m_sockets.end(); ++i)
+        for (auto i = m_sockets.begin(); i != m_sockets.end(); ++i)
         {
             NS_LOG_LOGIC("Forwarding to raw socket");
             Ptr<Ipv4RawSocketImpl> socket = *i;
@@ -844,7 +852,7 @@ Ipv4L3ClickProtocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip
         // we need to make a copy in the unlikely event we hit the
         // RX_ENDPOINT_UNREACH codepath
         Ptr<Packet> copy = p->Copy();
-        enum IpL4Protocol::RxStatus status = protocol->Receive(p, ip, GetInterface(iif));
+        IpL4Protocol::RxStatus status = protocol->Receive(p, ip, GetInterface(iif));
         switch (status)
         {
         case IpL4Protocol::RX_OK:
@@ -854,8 +862,7 @@ Ipv4L3ClickProtocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip
         case IpL4Protocol::RX_CSUM_FAILED:
             break;
         case IpL4Protocol::RX_ENDPOINT_UNREACH:
-            if (ip.GetDestination().IsBroadcast() == true ||
-                ip.GetDestination().IsMulticast() == true)
+            if (ip.GetDestination().IsBroadcast() || ip.GetDestination().IsMulticast())
             {
                 break; // Do not reply to broadcast or multicast
             }
@@ -871,7 +878,7 @@ Ipv4L3ClickProtocol::LocalDeliver(Ptr<const Packet> packet, const Ipv4Header& ip
                     subnetDirected = true;
                 }
             }
-            if (subnetDirected == false)
+            if (!subnetDirected)
             {
                 GetIcmp()->SendDestUnreachPort(ip, copy);
             }
@@ -925,7 +932,7 @@ Ipv4L3ClickProtocol::Remove(Ptr<IpL4Protocol> protocol)
     NS_LOG_FUNCTION(this << protocol);
 
     L4ListKey_t key = std::make_pair(protocol->GetProtocolNumber(), -1);
-    L4List_t::iterator iter = m_protocols.find(key);
+    auto iter = m_protocols.find(key);
     if (iter == m_protocols.end())
     {
         NS_LOG_WARN("Trying to remove an non-existent default protocol "
@@ -943,7 +950,7 @@ Ipv4L3ClickProtocol::Remove(Ptr<IpL4Protocol> protocol, uint32_t interfaceIndex)
     NS_LOG_FUNCTION(this << protocol << interfaceIndex);
 
     L4ListKey_t key = std::make_pair(protocol->GetProtocolNumber(), interfaceIndex);
-    L4List_t::iterator iter = m_protocols.find(key);
+    auto iter = m_protocols.find(key);
     if (iter == m_protocols.end())
     {
         NS_LOG_WARN("Trying to remove an non-existent protocol "
@@ -970,12 +977,11 @@ Ipv4L3ClickProtocol::GetProtocol(int protocolNumber, int32_t interfaceIndex) con
     NS_LOG_FUNCTION(this << protocolNumber << interfaceIndex);
 
     L4ListKey_t key;
-    L4List_t::const_iterator i;
     if (interfaceIndex >= 0)
     {
         // try the interface-specific protocol.
         key = std::make_pair(protocolNumber, interfaceIndex);
-        i = m_protocols.find(key);
+        auto i = m_protocols.find(key);
         if (i != m_protocols.end())
         {
             return i->second;
@@ -983,7 +989,7 @@ Ipv4L3ClickProtocol::GetProtocol(int protocolNumber, int32_t interfaceIndex) con
     }
     // try the generic protocol.
     key = std::make_pair(protocolNumber, -1);
-    i = m_protocols.find(key);
+    auto i = m_protocols.find(key);
     if (i != m_protocols.end())
     {
         return i->second;
@@ -993,5 +999,3 @@ Ipv4L3ClickProtocol::GetProtocol(int protocolNumber, int32_t interfaceIndex) con
 }
 
 } // namespace ns3
-
-#endif // NS3_CLICK

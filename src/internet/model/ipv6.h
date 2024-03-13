@@ -383,12 +383,14 @@ class Ipv6 : public Object
                       Ptr<Ipv6Route> route) = 0;
 
     /**
-     * \brief Register the IPv6 Extensions.
+     * \brief Register the IPv6 Extensions. Does nothing if the Extensions have been already
+     * registered.
      */
     virtual void RegisterExtensions() = 0;
 
     /**
-     * \brief Register the IPv6 Options.
+     * \brief Register the IPv6 Options. Does nothing if the Options have been already
+     * registered.
      */
     virtual void RegisterOptions() = 0;
 
@@ -422,6 +424,21 @@ class Ipv6 : public Object
      * \return MTU discover state (enabled or not)
      */
     virtual bool GetMtuDiscover() const = 0;
+
+    /**
+     * \brief Set or unset the Strong End System Model
+     *
+     * RFC1122 term for whether host rejects datagram with a dest. address on another interface
+     * \param model true for Strong End System Model
+     */
+    virtual void SetStrongEndSystemModel(bool model) = 0;
+    /**
+     * \brief Get the Strong End System Model status
+     *
+     * RFC1122 term for whether host rejects datagram with a dest. address on another interface
+     * \returns true for Strong End System Model activated
+     */
+    virtual bool GetStrongEndSystemModel() const = 0;
 };
 
 } // namespace ns3

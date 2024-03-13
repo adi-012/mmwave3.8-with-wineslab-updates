@@ -36,6 +36,7 @@
 #include "ns3/string.h"
 #include "ns3/tuple.h"
 #include "ns3/udp-client-server-helper.h"
+#include "ns3/udp-server.h"
 #include "ns3/uinteger.h"
 #include "ns3/yans-wifi-channel.h"
 #include "ns3/yans-wifi-helper.h"
@@ -96,11 +97,8 @@ main(int argc, char* argv[])
         Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("0"));
     }
 
-    double prevThroughput[8];
-    for (uint32_t l = 0; l < 8; l++)
-    {
-        prevThroughput[l] = 0;
-    }
+    double prevThroughput[8] = {0};
+
     std::cout << "MCS value"
               << "\t\t"
               << "Channel width"
@@ -121,7 +119,7 @@ main(int argc, char* argv[])
         double previous = 0;
         for (int channelWidth = 20; channelWidth <= 40;)
         {
-            for (int sgi = 0; sgi < 2; sgi++)
+            for (auto sgi : {false, true})
             {
                 uint32_t payloadSize; // 1500 byte IP packet
                 if (udp)
@@ -179,7 +177,8 @@ main(int argc, char* argv[])
                 wifi.ConfigHtOptions("ShortGuardIntervalSupported", BooleanValue(sgi));
 
                 Ssid ssid = Ssid("ns3-80211n");
-                TupleValue<UintegerValue, UintegerValue, EnumValue, UintegerValue> channelValue;
+                TupleValue<UintegerValue, UintegerValue, EnumValue<WifiPhyBand>, UintegerValue>
+                    channelValue;
                 WifiPhyBand band = (frequency == 5.0 ? WIFI_PHY_BAND_5GHZ : WIFI_PHY_BAND_2_4GHZ);
                 channelValue.Set(WifiPhy::ChannelTuple{0, channelWidth, band, 0});
 
@@ -286,11 +285,11 @@ main(int argc, char* argv[])
 
                 Simulator::Destroy();
 
-                std::cout << mcs << "\t\t\t" << channelWidth << " MHz\t\t\t" << sgi << "\t\t\t"
-                          << throughput << " Mbit/s" << std::endl;
+                std::cout << mcs << "\t\t\t" << channelWidth << " MHz\t\t\t" << std::boolalpha
+                          << sgi << "\t\t\t" << throughput << " Mbit/s" << std::endl;
 
                 // test first element
-                if (mcs == 0 && channelWidth == 20 && sgi == 0)
+                if (mcs == 0 && channelWidth == 20 && !sgi)
                 {
                     if (throughput < minExpectedThroughput)
                     {
@@ -298,7 +297,7 @@ main(int argc, char* argv[])
                     }
                 }
                 // test last element
-                if (mcs == 7 && channelWidth == 40 && sgi == 1)
+                if (mcs == 7 && channelWidth == 40 && sgi)
                 {
                     if (maxExpectedThroughput > 0 && throughput > maxExpectedThroughput)
                     {

@@ -111,7 +111,7 @@ PrintGnuplottableBuildingListToFile(std::string filename)
         return;
     }
     uint32_t index = 1;
-    for (BuildingList::Iterator it = BuildingList::Begin(); it != BuildingList::End(); ++it)
+    for (auto it = BuildingList::Begin(); it != BuildingList::End(); ++it)
     {
         ++index;
         Box box = (*it)->GetBoundaries();
@@ -176,7 +176,7 @@ main(int argc, char* argv[])
     // configuration.
 
     int64_t streamIndex = 1;
-    if (useHelper == false)
+    if (!useHelper)
     {
         // The reference (parent) mobility model starts at coordinate (10, 10, 0)
         // and performs a buildings-aware random walk.
@@ -196,7 +196,7 @@ main(int argc, char* argv[])
         outdoorMm->SetPosition(Vector(10, 10, 0));
         streamIndex += outdoorMm->AssignStreams(streamIndex);
 
-        // Each HierachicalMobilityModel contains the above model as the Parent,
+        // Each HierarchicalMobilityModel contains the above model as the Parent,
         // and a user defined model as the Child.  Two MobilityModel objects are
         // instantiated per node, and each node also shares the same parent model.
 

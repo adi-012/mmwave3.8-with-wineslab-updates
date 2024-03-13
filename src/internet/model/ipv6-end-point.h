@@ -20,10 +20,11 @@
 #ifndef IPV6_END_POINT_H
 #define IPV6_END_POINT_H
 
+#include "ipv6-header.h"
+#include "ipv6-interface.h"
+
 #include "ns3/callback.h"
 #include "ns3/ipv6-address.h"
-#include "ns3/ipv6-header.h"
-#include "ns3/ipv6-interface.h"
 #include "ns3/net-device.h"
 
 #include <stdint.h>
@@ -62,7 +63,7 @@ class Ipv6EndPoint
      * \brief Get the local address.
      * \return the local address
      */
-    Ipv6Address GetLocalAddress();
+    Ipv6Address GetLocalAddress() const;
 
     /**
      * \brief Set the local address.
@@ -86,7 +87,7 @@ class Ipv6EndPoint
      * \brief Get the peer address.
      * \return the peer address
      */
-    Ipv6Address GetPeerAddress();
+    Ipv6Address GetPeerAddress() const;
 
     /**
      * \brief Get the peer port.
@@ -130,7 +131,7 @@ class Ipv6EndPoint
      *
      * \returns Pointer to interface.
      */
-    Ptr<NetDevice> GetBoundNetDevice();
+    Ptr<NetDevice> GetBoundNetDevice() const;
 
     /**
      * \brief Set the reception callback.

@@ -639,7 +639,7 @@ BaseStationNetDevice::DoSend(Ptr<Packet> packet,
     NS_LOG_INFO("BS (" << source << "):");
     NS_LOG_INFO("\tSending packet...");
     NS_LOG_INFO("\t\tDestination: " << dest);
-    NS_LOG_INFO("\t\tPaket Size:  " << packet->GetSize());
+    NS_LOG_INFO("\t\tPacket Size:  " << packet->GetSize());
     NS_LOG_INFO("\t\tProtocol:    " << protocolNumber);
 
     if (protocolNumber == 2048)
@@ -716,7 +716,7 @@ BaseStationNetDevice::DoReceive(Ptr<Packet> packet)
     packet->RemoveHeader(gnrcMacHdr);
     if (gnrcMacHdr.GetHt() == MacHeaderType::HEADER_TYPE_GENERIC)
     {
-        if (gnrcMacHdr.check_hcs() == false)
+        if (!gnrcMacHdr.check_hcs())
         {
             // The header is noisy
             m_bsRxDropTrace(packet);
@@ -831,7 +831,7 @@ BaseStationNetDevice::DoReceive(Ptr<Packet> packet)
                 C_Packet->RemoveHeader(llc);
                 source = m_ssManager->GetMacAddress(cid);
                 m_bsRxTrace(packet);
-                ForwardUp(packet->Copy(), source, Mac48Address("ff:ff:ff:ff:ff:ff"));
+                ForwardUp(packet->Copy(), source, Mac48Address::GetBroadcast());
             }
             else
             {
@@ -851,9 +851,7 @@ BaseStationNetDevice::DoReceive(Ptr<Packet> packet)
 
                     // DEFRAGMENTATION
                     NS_LOG_INFO("\t BS PACKET DEFRAGMENTATION" << std::endl);
-                    for (std::list<Ptr<const Packet>>::const_iterator iter = fragmentsQueue.begin();
-                         iter != fragmentsQueue.end();
-                         ++iter)
+                    for (auto iter = fragmentsQueue.begin(); iter != fragmentsQueue.end(); ++iter)
                     {
                         // Create the whole Packet
                         fullPacket->AddAtEnd(*iter);
@@ -863,7 +861,7 @@ BaseStationNetDevice::DoReceive(Ptr<Packet> packet)
                     NS_LOG_INFO("\t fullPacket size = " << fullPacket->GetSize() << std::endl);
                     source = m_ssManager->GetMacAddress(cid);
                     m_bsRxTrace(fullPacket);
-                    ForwardUp(fullPacket->Copy(), source, Mac48Address("ff:ff:ff:ff:ff:ff"));
+                    ForwardUp(fullPacket->Copy(), source, Mac48Address::GetBroadcast());
                 }
                 else
                 {
@@ -882,7 +880,7 @@ BaseStationNetDevice::DoReceive(Ptr<Packet> packet)
         packet->RemoveHeader(bwRequestHdr);
         NS_ASSERT_MSG(bwRequestHdr.GetHt() == MacHeaderType::HEADER_TYPE_BANDWIDTH,
                       "A bandwidth request should be carried by a bandwidth header type");
-        if (bwRequestHdr.check_hcs() == false)
+        if (!bwRequestHdr.check_hcs())
         {
             // The header is noisy
             NS_LOG_INFO("BS:Header HCS ERROR");
@@ -1029,10 +1027,7 @@ BaseStationNetDevice::CreateDlMap()
     std::list<std::pair<OfdmDlMapIe*, Ptr<PacketBurst>>>* downlinkBursts =
         m_scheduler->GetDownlinkBursts();
 
-    for (std::list<std::pair<OfdmDlMapIe*, Ptr<PacketBurst>>>::iterator iter =
-             downlinkBursts->begin();
-         iter != downlinkBursts->end();
-         ++iter)
+    for (auto iter = downlinkBursts->begin(); iter != downlinkBursts->end(); ++iter)
     {
         iter->first->SetPreamblePresent(0);
         iter->first->SetStartTime(0);
@@ -1096,9 +1091,7 @@ BaseStationNetDevice::CreateUlMap()
 
     std::list<OfdmUlMapIe> uplinkAllocations = m_uplinkScheduler->GetUplinkAllocations();
 
-    for (std::list<OfdmUlMapIe>::iterator iter = uplinkAllocations.begin();
-         iter != uplinkAllocations.end();
-         ++iter)
+    for (auto iter = uplinkAllocations.begin(); iter != uplinkAllocations.end(); ++iter)
     {
         ulmap.AddUlMapElement(*iter);
     }
@@ -1197,9 +1190,7 @@ BaseStationNetDevice::MarkUplinkAllocations()
 {
     uint16_t symbolsToAllocation = 0;
     std::list<OfdmUlMapIe> uplinkAllocations = m_uplinkScheduler->GetUplinkAllocations();
-    for (std::list<OfdmUlMapIe>::iterator iter = uplinkAllocations.begin();
-         iter != uplinkAllocations.end();
-         ++iter)
+    for (auto iter = uplinkAllocations.begin(); iter != uplinkAllocations.end(); ++iter)
     {
         OfdmUlMapIe uplinkAllocation = *iter;
 

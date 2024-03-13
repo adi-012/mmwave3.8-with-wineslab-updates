@@ -71,12 +71,26 @@ UdpClient::GetTypeId()
                           UintegerValue(100),
                           MakeUintegerAccessor(&UdpClient::m_peerPort),
                           MakeUintegerChecker<uint16_t>())
+            .AddAttribute("Tos",
+                          "The Type of Service used to send IPv4 packets. "
+                          "All 8 bits of the TOS byte are set (including ECN bits).",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&UdpClient::m_tos),
+                          MakeUintegerChecker<uint8_t>())
             .AddAttribute("PacketSize",
                           "Size of packets generated. The minimum packet size is 12 bytes which is "
                           "the size of the header carrying the sequence number and the time stamp.",
                           UintegerValue(1024),
                           MakeUintegerAccessor(&UdpClient::m_size),
-                          MakeUintegerChecker<uint32_t>(12, 65507));
+                          MakeUintegerChecker<uint32_t>(12, 65507))
+            .AddTraceSource("Tx",
+                            "A new packet is created and sent",
+                            MakeTraceSourceAccessor(&UdpClient::m_txTrace),
+                            "ns3::Packet::TracedCallback")
+            .AddTraceSource("TxWithAddresses",
+                            "A new packet is created and sent",
+                            MakeTraceSourceAccessor(&UdpClient::m_txTraceWithAddresses),
+                            "ns3::Packet::TwoAddressTracedCallback");
     return tid;
 }
 
@@ -125,16 +139,17 @@ UdpClient::StartApplication()
     {
         TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
         m_socket = Socket::CreateSocket(GetNode(), tid);
-        if (Ipv4Address::IsMatchingType(m_peerAddress) == true)
+        if (Ipv4Address::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind() == -1)
             {
                 NS_FATAL_ERROR("Failed to bind socket");
             }
+            m_socket->SetIpTos(m_tos); // Affects only IPv4 sockets.
             m_socket->Connect(
                 InetSocketAddress(Ipv4Address::ConvertFrom(m_peerAddress), m_peerPort));
         }
-        else if (Ipv6Address::IsMatchingType(m_peerAddress) == true)
+        else if (Ipv6Address::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind6() == -1)
             {
@@ -143,15 +158,16 @@ UdpClient::StartApplication()
             m_socket->Connect(
                 Inet6SocketAddress(Ipv6Address::ConvertFrom(m_peerAddress), m_peerPort));
         }
-        else if (InetSocketAddress::IsMatchingType(m_peerAddress) == true)
+        else if (InetSocketAddress::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind() == -1)
             {
                 NS_FATAL_ERROR("Failed to bind socket");
             }
+            m_socket->SetIpTos(m_tos); // Affects only IPv4 sockets.
             m_socket->Connect(m_peerAddress);
         }
-        else if (Inet6SocketAddress::IsMatchingType(m_peerAddress) == true)
+        else if (Inet6SocketAddress::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind6() == -1)
             {
@@ -203,9 +219,20 @@ UdpClient::Send()
 {
     NS_LOG_FUNCTION(this);
     NS_ASSERT(m_sendEvent.IsExpired());
+
+    Address from;
+    Address to;
+    m_socket->GetSockName(from);
+    m_socket->GetPeerName(to);
     SeqTsHeader seqTs;
     seqTs.SetSeq(m_sent);
-    Ptr<Packet> p = Create<Packet>(m_size - (8 + 4)); // 8+4 : the size of the seqTs header
+    NS_ABORT_IF(m_size < seqTs.GetSerializedSize());
+    Ptr<Packet> p = Create<Packet>(m_size - seqTs.GetSerializedSize());
+
+    // Trace before adding header, for consistency with PacketSink
+    m_txTrace(p);
+    m_txTraceWithAddresses(p, from, to);
+
     p->AddHeader(seqTs);
 
     if ((m_socket->Send(p)) >= 0)

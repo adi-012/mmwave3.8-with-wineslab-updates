@@ -8,7 +8,7 @@ follows:
 
 * Several guides that are version controlled for each release (the
   `latest release <https://www.nsnam.org/documentation/latest/>`_) and
-  `development tree <https://www.nsnam.org/ns-3-dev/documentation/>`_:
+  `development tree <https://www.nsnam.org/documentation/development-tree/>`_:
 
   * Tutorial
   * Installation Guide
@@ -25,6 +25,7 @@ from the ``doc/`` directory of each module.  Source file column width is 100 col
 
 .. toctree::
    :maxdepth: 1
+   :numbered:
 
    organization
    animation
@@ -59,6 +60,5 @@ from the ``doc/`` directory of each module.  Source file column width is 100 col
    topology
    traffic-control
    uan
-   wave
    wifi
    wimax

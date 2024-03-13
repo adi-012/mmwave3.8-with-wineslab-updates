@@ -1,4 +1,5 @@
 /*
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation;
@@ -11,6 +12,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Blake Hurd <naimorai@gmail.com>
+ * Modified by: Josh Pelkey <joshpelkey@gmail.com>
  */
 
 // Network topology
@@ -82,7 +86,6 @@ SetTimeout(const std::string& value)
 int
 main(int argc, char* argv[])
 {
-#ifdef NS3_OPENFLOW
     //
     // Allow the user to override any of the defaults and the above Bind() at
     // run-time, via command-line arguments
@@ -219,9 +222,6 @@ main(int argc, char* argv[])
     Simulator::Run();
     Simulator::Destroy();
     NS_LOG_INFO("Done.");
-#else
-    NS_LOG_INFO("NS-3 OpenFlow is not enabled. Cannot run simulation.");
-#endif // NS3_OPENFLOW
 
     return 0;
 }

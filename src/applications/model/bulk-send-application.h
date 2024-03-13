@@ -20,11 +20,12 @@
 #ifndef BULK_SEND_APPLICATION_H
 #define BULK_SEND_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
-#include "ns3/seq-ts-size-header.h"
 #include "ns3/traced-callback.h"
 
 namespace ns3
@@ -125,6 +126,7 @@ class BulkSendApplication : public Application
     Address m_peer;                      //!< Peer address
     Address m_local;                     //!< Local address to bind to
     bool m_connected;                    //!< True if connected
+    uint8_t m_tos;                       //!< The packets Type of Service
     uint32_t m_sendSize;                 //!< Size of data to send each time
     uint64_t m_maxBytes;                 //!< Limit total number of bytes sent
     uint64_t m_totBytes;                 //!< Total bytes sent so far

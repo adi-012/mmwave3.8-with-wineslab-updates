@@ -24,12 +24,13 @@
 #ifndef ONOFF_APPLICATION_H
 #define ONOFF_APPLICATION_H
 
+#include "seq-ts-size-header.h"
+
 #include "ns3/address.h"
 #include "ns3/application.h"
 #include "ns3/data-rate.h"
 #include "ns3/event-id.h"
 #include "ns3/ptr.h"
-#include "ns3/seq-ts-size-header.h"
 #include "ns3/traced-callback.h"
 
 namespace ns3
@@ -162,6 +163,7 @@ class OnOffApplication : public Application
     Address m_peer;                      //!< Peer address
     Address m_local;                     //!< Local address to bind to
     bool m_connected;                    //!< True if connected
+    uint8_t m_tos;                       //!< The packets Type of Service
     Ptr<RandomVariableStream> m_onTime;  //!< rng for On Time
     Ptr<RandomVariableStream> m_offTime; //!< rng for Off Time
     DataRate m_cbrRate;                  //!< Rate that data is generated

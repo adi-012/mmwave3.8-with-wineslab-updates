@@ -20,7 +20,7 @@
 #ifndef CONSTANT_SPECTRUM_PROPAGATION_LOSS_H
 #define CONSTANT_SPECTRUM_PROPAGATION_LOSS_H
 
-#include "ns3/spectrum-propagation-loss-model.h"
+#include "spectrum-propagation-loss-model.h"
 
 namespace ns3
 {
@@ -57,8 +57,10 @@ class ConstantSpectrumPropagationLossModel : public SpectrumPropagationLossModel
     double GetLossDb() const;
 
   protected:
+    int64_t DoAssignStreams(int64_t stream) override;
     double m_lossDb;     //!< Propagation loss [dB]
     double m_lossLinear; //!< Propagation loss (linear)
+
   private:
 };
 

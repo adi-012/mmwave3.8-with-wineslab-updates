@@ -73,7 +73,7 @@ ServiceFlow::ServiceFlow(Tlv tlv)
 {
     InitValues();
     m_connection = nullptr;
-    m_isEnabled = 0;
+    m_isEnabled = false;
     m_record = new ServiceFlowRecord();
     NS_ASSERT_MSG(tlv.GetType() == Tlv::UPLINK_SERVICE_FLOW ||
                       tlv.GetType() == Tlv::DOWNLINK_SERVICE_FLOW,
@@ -91,7 +91,7 @@ ServiceFlow::ServiceFlow(Tlv tlv)
         m_direction = SF_DIRECTION_DOWN;
     }
 
-    for (std::vector<Tlv*>::const_iterator iter = param->Begin(); iter != param->End(); ++iter)
+    for (auto iter = param->Begin(); iter != param->End(); ++iter)
     {
         switch ((*iter)->GetType())
         {
@@ -151,7 +151,7 @@ ServiceFlow::ServiceFlow(Tlv tlv)
         }
         case SfVectorTlvValue::CS_Specification: {
             m_csSpecification =
-                (enum CsSpecification)(((U8TlvValue*)((*iter)->PeekValue()))->GetValue());
+                (CsSpecification)(((U8TlvValue*)((*iter)->PeekValue()))->GetValue());
             break;
         }
 
@@ -246,7 +246,7 @@ ServiceFlow::GetQueue() const
     return m_connection->GetQueue();
 }
 
-enum ServiceFlow::SchedulingType
+ServiceFlow::SchedulingType
 ServiceFlow::GetSchedulingType() const
 {
     return m_schedulingType;
@@ -362,7 +362,7 @@ ServiceFlow::GetMinTolerableTrafficRate() const
     return m_minTolerableTrafficRate;
 }
 
-enum ServiceFlow::SchedulingType
+ServiceFlow::SchedulingType
 ServiceFlow::GetServiceSchedulingType() const
 {
     return m_schedulingType;
@@ -458,7 +458,7 @@ ServiceFlow::GetArqBlockSize() const
     return m_arqBlockSize;
 }
 
-enum ServiceFlow::CsSpecification
+ServiceFlow::CsSpecification
 ServiceFlow::GetCsSpecification() const
 {
     return m_csSpecification;
@@ -488,7 +488,7 @@ ServiceFlow::GetIsMulticast() const
     return m_isMulticast;
 }
 
-enum WimaxPhy::ModulationType
+WimaxPhy::ModulationType
 ServiceFlow::GetModulation() const
 {
     return m_modulationType;
@@ -545,7 +545,7 @@ ServiceFlow::SetMinTolerableTrafficRate(uint32_t minJitter)
 }
 
 void
-ServiceFlow::SetServiceSchedulingType(enum ServiceFlow::SchedulingType schedType)
+ServiceFlow::SetServiceSchedulingType(ServiceFlow::SchedulingType schedType)
 {
     m_schedulingType = schedType;
 }
@@ -641,7 +641,7 @@ ServiceFlow::SetArqBlockSize(uint16_t size)
 }
 
 void
-ServiceFlow::SetCsSpecification(enum ServiceFlow::CsSpecification spec)
+ServiceFlow::SetCsSpecification(ServiceFlow::CsSpecification spec)
 {
     m_csSpecification = spec;
 }
@@ -671,7 +671,7 @@ ServiceFlow::SetIsMulticast(bool isMulticast)
 }
 
 void
-ServiceFlow::SetModulation(enum WimaxPhy::ModulationType modulationType)
+ServiceFlow::SetModulation(WimaxPhy::ModulationType modulationType)
 {
     m_modulationType = modulationType;
 }
@@ -827,16 +827,12 @@ ServiceFlow::GetSchedulingTypeStr() const
     {
     case SF_TYPE_UGS:
         return (char*)"UGS";
-        break;
     case SF_TYPE_RTPS:
         return (char*)"rtPS";
-        break;
     case SF_TYPE_NRTPS:
         return (char*)"nrtPS";
-        break;
     case SF_TYPE_BE:
         return (char*)"BE";
-        break;
     default:
         NS_FATAL_ERROR("Invalid scheduling type");
     }

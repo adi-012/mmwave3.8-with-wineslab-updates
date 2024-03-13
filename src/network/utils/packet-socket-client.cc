@@ -19,12 +19,13 @@
 
 #include "packet-socket-client.h"
 
+#include "packet-socket-address.h"
+#include "packet-socket-factory.h"
+#include "packet-socket.h"
+
 #include "ns3/abort.h"
 #include "ns3/log.h"
 #include "ns3/nstime.h"
-#include "ns3/packet-socket-address.h"
-#include "ns3/packet-socket-factory.h"
-#include "ns3/packet-socket.h"
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 #include "ns3/socket-factory.h"
@@ -182,7 +183,17 @@ PacketSocketClient::Send()
 
     if ((m_sent < m_maxPackets) || (m_maxPackets == 0))
     {
-        m_sendEvent = Simulator::Schedule(m_interval, &PacketSocketClient::Send, this);
+        if (m_interval.IsZero())
+        {
+            NS_ABORT_MSG_IF(
+                m_maxPackets == 0,
+                "Generating infinite packets at the same time does not seem to be a good idea");
+            Send();
+        }
+        else
+        {
+            m_sendEvent = Simulator::Schedule(m_interval, &PacketSocketClient::Send, this);
+        }
     }
 }
 

@@ -1,18 +1,18 @@
 #include "ipv4-raw-socket-impl.h"
 
 #include "icmpv4.h"
-#include "ipv4-l3-protocol.h"
+#include "ipv4-packet-info-tag.h"
+#include "ipv4-routing-protocol.h"
 
 #include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
-#include "ns3/ipv4-packet-info-tag.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
 
 #ifdef __WIN32__
-#include "ns3/win32-internet.h"
+#include "win32-internet.h"
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -88,14 +88,14 @@ Ipv4RawSocketImpl::DoDispose()
     Socket::DoDispose();
 }
 
-enum Socket::SocketErrno
+Socket::SocketErrno
 Ipv4RawSocketImpl::GetErrno() const
 {
     NS_LOG_FUNCTION(this);
     return m_err;
 }
 
-enum Socket::SocketType
+Socket::SocketType
 Ipv4RawSocketImpl::GetSocketType() const
 {
     NS_LOG_FUNCTION(this);
@@ -135,7 +135,7 @@ int
 Ipv4RawSocketImpl::Bind6()
 {
     NS_LOG_FUNCTION(this);
-    return (-1);
+    return -1;
 }
 
 int
@@ -202,7 +202,6 @@ Ipv4RawSocketImpl::Connect(const Address& address)
     }
     InetSocketAddress ad = InetSocketAddress::ConvertFrom(address);
     m_dst = ad.GetIpv4();
-    SetIpTos(ad.GetTos());
     NotifyConnectionSucceeded();
 
     return 0;
@@ -228,7 +227,6 @@ Ipv4RawSocketImpl::Send(Ptr<Packet> p, uint32_t flags)
 {
     NS_LOG_FUNCTION(this << p << flags);
     InetSocketAddress to = InetSocketAddress(m_dst, m_protocol);
-    to.SetTos(GetIpTos());
     return SendTo(p, flags, to);
 }
 
@@ -250,7 +248,7 @@ Ipv4RawSocketImpl::SendTo(Ptr<Packet> p, uint32_t flags, const Address& toAddres
     Ptr<Ipv4> ipv4 = m_node->GetObject<Ipv4>();
     Ipv4Address dst = ad.GetIpv4();
     Ipv4Address src = m_src;
-    uint8_t tos = ad.GetTos();
+    uint8_t tos = GetIpTos();
 
     uint8_t priority = GetPriority();
     if (tos)
@@ -400,7 +398,7 @@ Ipv4RawSocketImpl::GetRxAvailable() const
 {
     NS_LOG_FUNCTION(this);
     uint32_t rx = 0;
-    for (std::list<Data>::const_iterator i = m_recv.begin(); i != m_recv.end(); ++i)
+    for (auto i = m_recv.begin(); i != m_recv.end(); ++i)
     {
         rx += (i->packet)->GetSize();
     }
@@ -526,11 +524,7 @@ bool
 Ipv4RawSocketImpl::SetAllowBroadcast(bool allowBroadcast)
 {
     NS_LOG_FUNCTION(this << allowBroadcast);
-    if (!allowBroadcast)
-    {
-        return false;
-    }
-    return true;
+    return allowBroadcast;
 }
 
 bool

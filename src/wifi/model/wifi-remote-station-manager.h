@@ -30,6 +30,7 @@
 #include "ns3/he-capabilities.h"
 #include "ns3/ht-capabilities.h"
 #include "ns3/mac48-address.h"
+#include "ns3/multi-link-element.h"
 #include "ns3/object.h"
 #include "ns3/traced-callback.h"
 #include "ns3/vht-capabilities.h"
@@ -98,21 +99,22 @@ struct WifiRemoteStationState
      * WifiRemoteStationManager::GetNSupported() and
      * WifiRemoteStationManager::GetSupported().
      */
-    WifiModeList m_operationalRateSet;        //!< operational rate set
-    WifiModeList m_operationalMcsSet;         //!< operational MCS set
-    Mac48Address m_address;                   //!< Mac48Address of the remote station
-    uint16_t m_aid;                           /**< AID of the remote station (unused if this object
-                                                   is installed on a non-AP station) */
-    std::optional<Mac48Address> m_mldAddress; /**< MLD MAC address if the remote station is
-                                                   affiliated with an MLD */
-    WifiRemoteStationInfo m_info;             //!< remote station info
-    bool m_dsssSupported;                     //!< Flag if DSSS is supported by the remote station
-    bool m_erpOfdmSupported; //!< Flag if ERP OFDM is supported by the remote station
-    bool m_ofdmSupported;    //!< Flag if OFDM is supported by the remote station
+    WifiModeList m_operationalRateSet; //!< operational rate set
+    WifiModeList m_operationalMcsSet;  //!< operational MCS set
+    Mac48Address m_address;            //!< Mac48Address of the remote station
+    uint16_t m_aid;                    /**< AID of the remote station (unused if this object
+                                            is installed on a non-AP station) */
+    WifiRemoteStationInfo m_info;      //!< remote station info
+    bool m_dsssSupported;              //!< Flag if DSSS is supported by the remote station
+    bool m_erpOfdmSupported;           //!< Flag if ERP OFDM is supported by the remote station
+    bool m_ofdmSupported;              //!< Flag if OFDM is supported by the remote station
     Ptr<const HtCapabilities> m_htCapabilities;   //!< remote station HT capabilities
     Ptr<const VhtCapabilities> m_vhtCapabilities; //!< remote station VHT capabilities
     Ptr<const HeCapabilities> m_heCapabilities;   //!< remote station HE capabilities
     Ptr<const EhtCapabilities> m_ehtCapabilities; //!< remote station EHT capabilities
+    /// remote station Multi-Link Element Common Info
+    std::shared_ptr<CommonInfoBasicMle> m_mleCommonInfo;
+    bool m_emlsrEnabled; //!< whether EMLSR mode is enabled on this link
 
     uint16_t m_channelWidth;  //!< Channel width (in MHz) supported by the remote station
     uint16_t m_guardInterval; //!< HE Guard interval duration (in nanoseconds) supported by the
@@ -122,6 +124,7 @@ struct WifiRemoteStationState
     bool m_shortPreamble;     //!< Flag if short PHY preamble is supported by the remote station
     bool m_shortSlotTime;     //!< Flag if short ERP slot time is supported by the remote station
     bool m_qosSupported;      //!< Flag if QoS is supported by the station
+    bool m_isInPsMode;        //!< Flag if the STA is currently in PS mode
 };
 
 /**
@@ -232,6 +235,11 @@ class WifiRemoteStationManager : public Object
      */
     void SetQosSupport(Mac48Address from, bool qosSupported);
     /**
+     * \param from the address of the station being recorded
+     * \param emlsrEnabled whether EMLSR mode is enabled for the station on this link
+     */
+    void SetEmlsrEnabled(const Mac48Address& from, bool emlsrEnabled);
+    /**
      * Records HT capabilities of the remote station.
      *
      * \param from the address of the station being recorded
@@ -260,6 +268,15 @@ class WifiRemoteStationManager : public Object
      */
     void AddStationEhtCapabilities(Mac48Address from, EhtCapabilities ehtCapabilities);
     /**
+     * Records the Common Info field advertised by the given remote station in a Multi-Link
+     * Element. It includes the MLD address of the remote station.
+     *
+     * \param from the address of the station being recorded
+     * \param mleCommonInfo the MLE Common Info advertised by the station
+     */
+    void AddStationMleCommonInfo(Mac48Address from,
+                                 const std::shared_ptr<CommonInfoBasicMle>& mleCommonInfo);
+    /**
      * Return the HT capabilities sent by the remote station.
      *
      * \param from the address of the remote station
@@ -287,6 +304,18 @@ class WifiRemoteStationManager : public Object
      * \return the EHT capabilities sent by the remote station
      */
     Ptr<const EhtCapabilities> GetStationEhtCapabilities(Mac48Address from);
+    /**
+     * \param from the (MLD or link) address of the remote non-AP MLD
+     * \return the EML Capabilities advertised by the remote non-AP MLD
+     */
+    std::optional<std::reference_wrapper<CommonInfoBasicMle::EmlCapabilities>>
+    GetStationEmlCapabilities(const Mac48Address& from);
+    /**
+     * \param from the (MLD or link) address of the remote non-AP MLD
+     * \return the MLD Capabilities advertised by the remote non-AP MLD
+     */
+    std::optional<std::reference_wrapper<CommonInfoBasicMle::MldCapabilities>>
+    GetStationMldCapabilities(const Mac48Address& from);
     /**
      * Return whether the device has HT capability support enabled.
      *
@@ -609,6 +638,16 @@ class WifiRemoteStationManager : public Object
      *         false otherwise
      */
     bool GetEhtSupported(Mac48Address address) const;
+    /**
+     * \param address the (MLD or link) address of the non-AP MLD
+     * \return whether the non-AP MLD supports EMLSR
+     */
+    bool GetEmlsrSupported(const Mac48Address& address) const;
+    /**
+     * \param address the (MLD or link) address of the non-AP MLD
+     * \return whether EMLSR mode is enabled for the non-AP MLD on this link
+     */
+    bool GetEmlsrEnabled(const Mac48Address& address) const;
 
     /**
      * Return a mode for non-unicast packets.
@@ -734,13 +773,21 @@ class WifiRemoteStationManager : public Object
     void RecordAssocRefused(Mac48Address address);
 
     /**
-     * Set the address of the MLD the given station is affiliated with.
+     * Return whether the STA is currently in Power Save mode.
      *
-     * \param address the MAC address of the remote station
-     * \param mldAddress the MAC address of the MLD the remote station is
-     *                   affiliated with
+     * \param address the address of the station
+     *
+     * \return true if the station is in Power Save mode, false otherwise
      */
-    void SetMldAddress(const Mac48Address& address, const Mac48Address& mldAddress);
+    bool IsInPsMode(const Mac48Address& address) const;
+    /**
+     * Register whether the STA is in Power Save mode or not.
+     *
+     * \param address the address of the station
+     * \param isInPsMode whether the STA is in PS mode or not
+     */
+    void SetPsMode(const Mac48Address& address, bool isInPsMode);
+
     /**
      * Get the address of the MLD the given station is affiliated with, if any.
      * Note that an MLD address is only present if an ML discovery/setup was performed
@@ -769,11 +816,12 @@ class WifiRemoteStationManager : public Object
     WifiTxVector GetDataTxVector(const WifiMacHeader& header, uint16_t allowedWidth);
     /**
      * \param address remote address
+     * \param allowedWidth the allowed width in MHz for the data frame being protected
      *
      * \return the TXVECTOR to use to send the RTS prior to the
      *         transmission of the data packet itself.
      */
-    WifiTxVector GetRtsTxVector(Mac48Address address);
+    WifiTxVector GetRtsTxVector(Mac48Address address, uint16_t allowedWidth);
     /**
      * Return a TXVECTOR for the CTS frame given the destination and the mode of the RTS
      * used by the sender.
@@ -791,6 +839,13 @@ class WifiRemoteStationManager : public Object
      *         transmission of the data packet itself.
      */
     WifiTxVector GetCtsToSelfTxVector();
+    /**
+     * Adjust the TXVECTOR for an initial Control frame to ensure that the modulation class
+     * is non-HT and the rate is 6 Mbps, 12 Mbps or 24 Mbps.
+     *
+     * \param txVector the TXVECTOR to adjust
+     */
+    void AdjustTxVectorForIcf(WifiTxVector& txVector) const;
     /**
      * Return a TXVECTOR for the Ack frame given the destination and the mode of the Data
      * used by the sender.
@@ -1096,6 +1151,16 @@ class WifiRemoteStationManager : public Object
      *         false otherwise
      */
     bool GetEhtSupported(const WifiRemoteStation* station) const;
+    /**
+     * \param station the station of a non-AP MLD
+     * \return whether the non-AP MLD supports EMLSR
+     */
+    bool GetEmlsrSupported(const WifiRemoteStation* station) const;
+    /**
+     * \param station the station of a non-AP MLD
+     * \return whether EMLSR mode is enabled for the non-AP MLD on this link
+     */
+    bool GetEmlsrEnabled(const WifiRemoteStation* station) const;
     /**
      * Return the WifiMode supported by the specified station at the specified index.
      *
@@ -1425,9 +1490,6 @@ class WifiRemoteStationManager : public Object
 
     StationStates m_states; //!< States of known stations
     Stations m_stations;    //!< Information for each known stations
-
-    WifiMode m_defaultTxMode; //!< The default transmission mode
-    WifiMode m_defaultTxMcs;  //!< The default transmission modulation-coding scheme (MCS)
 
     uint32_t m_maxSsrc;                //!< Maximum STA short retry count (SSRC)
     uint32_t m_maxSlrc;                //!< Maximum STA long retry count (SLRC)

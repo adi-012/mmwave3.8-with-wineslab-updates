@@ -25,6 +25,8 @@ IMAGES_EPS = \
 	$(FIGURES)/FemHierarchy.eps \
         $(FIGURES)/assoc-manager.eps \
         $(FIGURES)/clear-channel.eps \
+        $(FIGURES)/emlsr-dl-txop.eps \
+        $(FIGURES)/emlsr-ul-txop.eps \
         $(FIGURES)/nist-frame-success-rate.eps \
         $(FIGURES)/nist-frame-success-rate-n.eps \
         $(FIGURES)/nist-frame-success-rate-ac.eps \
@@ -61,7 +63,7 @@ RESCALE = ../../../utils/rescale-pdf.sh
 
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    = -W --keep-going
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = build

@@ -21,6 +21,7 @@
 #define CHANNEL_ACCESS_MANAGER_H
 
 #include "wifi-phy-common.h"
+#include "wifi-phy-operating-channel.h"
 
 #include "ns3/event-id.h"
 #include "ns3/nstime.h"
@@ -28,7 +29,11 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
+#include <unordered_map>
 #include <vector>
+
+class EmlsrUlTxopTest;
 
 namespace ns3
 {
@@ -55,22 +60,40 @@ class FrameExchangeManager;
  */
 class ChannelAccessManager : public Object
 {
+    /// Allow test cases to access private members
+    friend class ::EmlsrUlTxopTest;
+
   public:
     ChannelAccessManager();
     ~ChannelAccessManager() override;
 
     /**
-     * Set up listener for PHY events.
+     * \brief Get the type ID.
+     * \return the object TypeId
+     */
+    static TypeId GetTypeId();
+
+    /**
+     * Set up (or reactivate) listener for PHY events on the given PHY. The new (or reactivated)
+     * listener becomes the active listener and the previous active listener attached to another
+     * PHY, if any, is deactivated.
      *
      * \param phy the WifiPhy to listen to
      */
     void SetupPhyListener(Ptr<WifiPhy> phy);
     /**
-     * Remove current registered listener for PHY events.
+     * Remove current registered listener for PHY events on the given PHY.
      *
      * \param phy the WifiPhy to listen to
      */
     void RemovePhyListener(Ptr<WifiPhy> phy);
+    /**
+     * Deactivate current registered listener for PHY events on the given PHY. All notifications
+     * but channel switch notifications coming from an inactive listener are ignored.
+     *
+     * \param phy the WifiPhy to listen to
+     */
+    void DeactivatePhyListener(Ptr<WifiPhy> phy);
     /**
      * Set the ID of the link this Channel Access Manager is associated with.
      *
@@ -97,13 +120,22 @@ class ChannelAccessManager : public Object
     void Add(Ptr<Txop> txop);
 
     /**
-     * Determine if a new backoff needs to be generated when a packet is queued
-     * for transmission.
+     * Determine if a new backoff needs to be generated as per letter a) of Section 10.23.2.2
+     * of IEEE 802.11-2020 ("EDCA backoff procedure"). This method is called upon the occurrence
+     * of events such as the enqueuing of a packet or the unblocking of some links after they
+     * have been blocked for some reason (e.g., wait for ADDBA Response, wait for TX on another
+     * EMLSR link to finish, etc.). The <i>checkMediumBusy</i> argument allows to generate a new
+     * backoff regardless of the busy/idle state of the medium, as per Section 35.3.16.4 of
+     * 802.11be D4.0.
      *
      * \param txop the Txop requesting to generate a backoff
+     * \param hadFramesToTransmit whether packets available for transmission were queued just
+     *                            before the occurrence of the event triggering this call
+     * \param checkMediumBusy whether generation of backoff (also) depends on the busy/idle state
+     *                        of the medium
      * \return true if backoff needs to be generated, false otherwise
      */
-    bool NeedBackoffUponAccess(Ptr<Txop> txop);
+    bool NeedBackoffUponAccess(Ptr<Txop> txop, bool hadFramesToTransmit, bool checkMediumBusy);
 
     /**
      * \param txop a Txop
@@ -135,6 +167,22 @@ class ChannelAccessManager : public Object
      * the backoff timer.
      */
     void DisableEdcaFor(Ptr<Txop> qosTxop, Time duration);
+
+    /**
+     * Set the member variable indicating whether the backoff should be invoked when an AC gains
+     * the right to start a TXOP but it does not transmit any frame (e.g., due to constraints
+     * associated with EMLSR operations), provided that the queue is not actually empty.
+     *
+     * \param enable whether to enable backoff generation when no TX is performed in a TXOP
+     */
+    void SetGenerateBackoffOnNoTx(bool enable);
+
+    /**
+     * \return whether the backoff should be invoked when an AC gains the right to start a TXOP
+     *         but it does not transmit any frame (e.g., due to constraints associated with EMLSR
+     *         operations), provided that the queue is not actually empty
+     */
+    bool GetGenerateBackoffOnNoTx() const;
 
     /**
      * Return the width of the largest primary channel that has been idle for the
@@ -195,13 +243,14 @@ class ChannelAccessManager : public Object
                                WifiChannelListType channelType,
                                const std::vector<Time>& per20MhzDurations);
     /**
+     * \param phyListener the PHY listener that sent this notification
      * \param duration expected duration of channel switching period
      *
      * Notify the Txop that a channel switching period has just started.
      * During switching state, new packets can be enqueued in Txop/QosTxop
      * but they won't access to the medium until the end of the channel switching.
      */
-    void NotifySwitchingStartNow(Time duration);
+    void NotifySwitchingStartNow(PhyListener* phyListener, Time duration);
     /**
      * Notify the Txop that the device has been put in sleep mode.
      */
@@ -252,6 +301,15 @@ class ChannelAccessManager : public Object
     void NotifyCtsTimeoutResetNow();
 
     /**
+     * Notify that another EMLSR link is being used, hence medium access should be disabled.
+     */
+    void NotifyStartUsingOtherEmlsrLink();
+    /**
+     * Notify that another EMLSR link is no longer being used, hence medium access can be resumed.
+     */
+    void NotifyStopUsingOtherEmlsrLink();
+
+    /**
      * Check if the device is busy sending or receiving,
      * or NAV or CCA busy.
      *
@@ -260,10 +318,47 @@ class ChannelAccessManager : public Object
      */
     bool IsBusy() const;
 
+    /**
+     * Reset the state variables of this channel access manager.
+     */
+    void ResetState();
+    /**
+     * Reset the backoff for the given DCF/EDCAF.
+     *
+     * \param txop the given DCF/EDCAF
+     */
+    void ResetBackoff(Ptr<Txop> txop);
+
+    /**
+     * Reset the backoff for all the DCF/EDCAF. Additionally, cancel the access timeout event.
+     */
+    void ResetAllBackoffs();
+
+    /**
+     * Notify that the given PHY is about to switch to the given operating channel, which is
+     * used by the given link. This notification is sent by the EMLSR Manager when a PHY object
+     * switches operating channel to operate on another link.
+     *
+     * \param phy the PHY object that is going to switch channel
+     * \param channel the new operating channel of the given PHY
+     * \param linkId the ID of the link on which the given PHY is going to operate
+     */
+    void NotifySwitchingEmlsrLink(Ptr<WifiPhy> phy,
+                                  const WifiPhyOperatingChannel& channel,
+                                  uint8_t linkId);
+
   protected:
+    void DoInitialize() override;
     void DoDispose() override;
 
   private:
+    /**
+     * Get current registered listener for PHY events on the given PHY.
+     *
+     * \param phy the given PHY
+     * \return the current registered listener for PHY events on the given PHY
+     */
+    std::shared_ptr<PhyListener> GetPhyListener(Ptr<WifiPhy> phy) const;
     /**
      * Initialize the structures holding busy end times per channel type (primary,
      * secondary, etc.) and per 20 MHz channel.
@@ -359,14 +454,33 @@ class ChannelAccessManager : public Object
     std::vector<Time> m_lastPer20MHzBusyEnd; /**< the last busy end time per 20 MHz channel
                                                   (HE stations and channel width > 20 MHz only) */
     std::map<WifiChannelListType, Timespan>
-        m_lastIdle;             //!< the last idle start and end time for each channel type
-    Time m_lastSwitchingEnd;    //!< the last switching end time
-    bool m_sleeping;            //!< flag whether it is in sleeping state
-    bool m_off;                 //!< flag whether it is in off state
-    Time m_eifsNoDifs;          //!< EIFS no DIFS time
-    EventId m_accessTimeout;    //!< the access timeout ID
-    PhyListener* m_phyListener; //!< the PHY listener
-    Ptr<WifiPhy> m_phy;         //!< pointer to the PHY
+        m_lastIdle;               //!< the last idle start and end time for each channel type
+    Time m_lastSwitchingEnd;      //!< the last switching end time
+    bool m_usingOtherEmlsrLink;   //!< whether another EMLSR link is being used
+    bool m_sleeping;              //!< flag whether it is in sleeping state
+    bool m_off;                   //!< flag whether it is in off state
+    Time m_eifsNoDifs;            //!< EIFS no DIFS time
+    EventId m_accessTimeout;      //!< the access timeout ID
+    bool m_generateBackoffOnNoTx; //!< whether the backoff should be invoked when the AC gains the
+                                  //!< right to start a TXOP but it does not transmit any frame
+                                  //!< (e.g., due to constraints associated with EMLSR operations),
+                                  //!< provided that the queue is not actually empty
+
+    /// Information associated with each PHY that is going to operate on another EMLSR link
+    struct EmlsrLinkSwitchInfo
+    {
+        WifiPhyOperatingChannel channel; //!< new operating channel
+        uint8_t linkId; //!< ID of the EMLSR link on which the PHY is going to operate
+    };
+
+    /// Store information about the PHY objects that are going to operate on another EMLSR link
+    std::unordered_map<Ptr<WifiPhy>, EmlsrLinkSwitchInfo> m_switchingEmlsrLinks;
+
+    /// Maps each PHY listener to the associated PHY
+    using PhyListenerMap = std::unordered_map<Ptr<WifiPhy>, std::shared_ptr<PhyListener>>;
+
+    PhyListenerMap m_phyListeners;         //!< the PHY listeners
+    Ptr<WifiPhy> m_phy;                    //!< pointer to the unique active PHY
     Ptr<FrameExchangeManager> m_feManager; //!< pointer to the Frame Exchange Manager
     uint8_t m_linkId;                      //!< the ID of the link this object is associated with
 };

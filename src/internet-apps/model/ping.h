@@ -145,7 +145,7 @@ class Ping : public Application
      *
      * \param [in] report The report information
      */
-    typedef void (*ReportTrace)(const struct PingReport& report);
+    typedef void (*ReportTrace)(const PingReport& report);
 
   private:
     /**
@@ -213,6 +213,8 @@ class Ping : public Application
     uint32_t m_size{56};
     /// The socket we send packets from
     Ptr<Socket> m_socket;
+    /// The Type of Service carried by ICMP ECHOs
+    uint8_t m_tos;
     /// ICMP ECHO sequence number
     uint16_t m_seq{0};
     /// Callbacks for tracing the packet Tx events
@@ -222,7 +224,7 @@ class Ping : public Application
     /// TracedCallback for drop events
     TracedCallback<uint16_t, DropReason> m_dropTrace;
     /// TracedCallback for final ping report
-    TracedCallback<const struct PingReport&> m_reportTrace;
+    TracedCallback<const PingReport&> m_reportTrace;
     /// Variable to stor verbose mode
     VerboseMode m_verbose{VerboseMode::VERBOSE};
     /// Received packets counter

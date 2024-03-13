@@ -28,7 +28,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("TcpAdvertisedWindowTestSuite");
 
 /**
- * \ingroup internet-tests
+ * \ingroup internet-test
  * \ingroup tests
  * \brief Socket that wraps every call to AdvertisedWindowSize ().
  */
@@ -81,7 +81,7 @@ class TcpSocketAdvertisedWindowProxy : public TcpSocketMsgBase
     void SetExpectedSegmentSize(uint16_t seg)
     {
         m_segmentSize = seg;
-    };
+    }
 
   protected:
     Ptr<TcpSocketBase> Fork() override;
@@ -206,8 +206,8 @@ TcpSocketAdvertisedWindowProxy::OldAdvertisedWindowSize(bool scale) const
 NS_OBJECT_ENSURE_REGISTERED(TcpSocketAdvertisedWindowProxy);
 
 /**
- * \ingroup internet-tests
- * \ingroup test
+ * \ingroup internet-test
+ * \ingroup tests
  *
  * \brief An error model that randomly drops a given rátio of TCP segments.
  */
@@ -260,8 +260,8 @@ TcpDropRatioErrorModel::ShouldDrop(const Ipv4Header& ipHeader,
 }
 
 /**
- * \ingroup internet-tests
- * \ingroup test
+ * \ingroup internet-test
+ * \ingroup tests
  * \brief Test the new formula for calculating TCP's advertised window size.
  *
  * In TcpSocketBase, the advertised window is now calculated as
@@ -363,8 +363,8 @@ TcpAdvertisedWindowTest::InvalidAwndCb(uint16_t oldAwnd, uint16_t newAwnd)
 //-----------------------------------------------------------------------------
 
 /**
- * \ingroup internet-tests
- * \ingroup test
+ * \ingroup internet-test
+ * \ingroup tests
  * \brief Test the TCP's advertised window size when there is a loss of specific packets.
  */
 class TcpAdvWindowOnLossTest : public TcpGeneralTest
@@ -447,7 +447,7 @@ Ptr<ErrorModel>
 TcpAdvWindowOnLossTest::CreateReceiverErrorModel()
 {
     Ptr<TcpSeqErrorModel> m_errorModel = CreateObject<TcpSeqErrorModel>();
-    for (std::vector<uint32_t>::iterator it = m_toDrop.begin(); it != m_toDrop.end(); ++it)
+    for (auto it = m_toDrop.begin(); it != m_toDrop.end(); ++it)
     {
         m_errorModel->AddSeqToKill(SequenceNumber32(*it));
     }
@@ -464,8 +464,8 @@ TcpAdvWindowOnLossTest::InvalidAwndCb(uint16_t oldAwnd, uint16_t newAwnd)
 //-----------------------------------------------------------------------------
 
 /**
- * \ingroup internet-tests
- * \ingroup test
+ * \ingroup internet-test
+ * \ingroup tests
  *
  * \brief Test Suite for TCP adv window
  */

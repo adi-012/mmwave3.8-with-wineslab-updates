@@ -224,7 +224,7 @@ VirtualNetDevice::IsBroadcast() const
 Address
 VirtualNetDevice::GetBroadcast() const
 {
-    return Mac48Address("ff:ff:ff:ff:ff:ff");
+    return Mac48Address::GetBroadcast();
 }
 
 bool
@@ -236,13 +236,13 @@ VirtualNetDevice::IsMulticast() const
 Address
 VirtualNetDevice::GetMulticast(Ipv4Address multicastGroup) const
 {
-    return Mac48Address("ff:ff:ff:ff:ff:ff");
+    return Mac48Address::GetBroadcast();
 }
 
 Address
 VirtualNetDevice::GetMulticast(Ipv6Address addr) const
 {
-    return Mac48Address("ff:ff:ff:ff:ff:ff");
+    return Mac48Address::GetBroadcast();
 }
 
 bool
@@ -255,11 +255,7 @@ bool
 VirtualNetDevice::Send(Ptr<Packet> packet, const Address& dest, uint16_t protocolNumber)
 {
     m_macTxTrace(packet);
-    if (m_sendCb(packet, GetAddress(), dest, protocolNumber))
-    {
-        return true;
-    }
-    return false;
+    return m_sendCb(packet, GetAddress(), dest, protocolNumber);
 }
 
 bool
@@ -270,11 +266,7 @@ VirtualNetDevice::SendFrom(Ptr<Packet> packet,
 {
     NS_ASSERT(m_supportsSendFrom);
     m_macTxTrace(packet);
-    if (m_sendCb(packet, source, dest, protocolNumber))
-    {
-        return true;
-    }
-    return false;
+    return m_sendCb(packet, source, dest, protocolNumber);
 }
 
 Ptr<Node>

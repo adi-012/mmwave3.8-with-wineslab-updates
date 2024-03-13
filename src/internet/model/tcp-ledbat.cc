@@ -62,7 +62,7 @@ TcpLedbat::GetTypeId()
             .AddAttribute("SSParam",
                           "Possibility of Slow Start",
                           EnumValue(DO_SLOWSTART),
-                          MakeEnumAccessor(&TcpLedbat::SetDoSs),
+                          MakeEnumAccessor<SlowStartType>(&TcpLedbat::SetDoSs),
                           MakeEnumChecker(DO_SLOWSTART, "yes", DO_NOT_SLOWSTART, "no"))
             .AddAttribute("MinCwnd",
                           "Minimum cWnd for Ledbat",
@@ -102,10 +102,10 @@ TcpLedbat::TcpLedbat()
     m_sndCwndCnt = 0;
     m_flag = LEDBAT_CAN_SS;
     m_minCwnd = 2;
-};
+}
 
 void
-TcpLedbat::InitCircBuf(struct OwdCircBuf& buffer)
+TcpLedbat::InitCircBuf(OwdCircBuf& buffer)
 {
     NS_LOG_FUNCTION(this);
     buffer.buffer.clear();
@@ -147,7 +147,7 @@ TcpLedbat::GetName() const
 }
 
 uint32_t
-TcpLedbat::MinCircBuf(struct OwdCircBuf& b)
+TcpLedbat::MinCircBuf(OwdCircBuf& b)
 {
     NS_LOG_FUNCTION_NOARGS();
     if (b.buffer.empty())
@@ -239,7 +239,7 @@ TcpLedbat::CongestionAvoidance(Ptr<TcpSocketState> tcb, uint32_t segmentsAcked)
 }
 
 void
-TcpLedbat::AddDelay(struct OwdCircBuf& cb, uint32_t owd, uint32_t maxlen)
+TcpLedbat::AddDelay(OwdCircBuf& cb, uint32_t owd, uint32_t maxlen)
 {
     NS_LOG_FUNCTION(this << owd << maxlen << cb.buffer.size());
     if (cb.buffer.empty())
@@ -288,7 +288,7 @@ TcpLedbat::UpdateBaseDelay(uint32_t owd)
     }
     else
     {
-        uint32_t last = static_cast<uint32_t>(m_baseHistory.buffer.size() - 1);
+        auto last = static_cast<uint32_t>(m_baseHistory.buffer.size() - 1);
         if (owd < m_baseHistory.buffer[last])
         {
             m_baseHistory.buffer[last] = owd;

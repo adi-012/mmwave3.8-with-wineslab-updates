@@ -61,7 +61,7 @@ FdNetDeviceFdReader::DoRead()
 {
     NS_LOG_FUNCTION(this);
 
-    uint8_t* buf = (uint8_t*)malloc(m_bufferSize);
+    auto buf = (uint8_t*)malloc(m_bufferSize);
     NS_ABORT_MSG_IF(buf == nullptr, "malloc() failed");
 
     NS_LOG_LOGIC("Calling read on fd " << m_fd);
@@ -106,7 +106,7 @@ FdNetDevice::GetTypeId()
             .AddAttribute("EncapsulationMode",
                           "The link-layer encapsulation type to use.",
                           EnumValue(DIX),
-                          MakeEnumAccessor(&FdNetDevice::m_encapMode),
+                          MakeEnumAccessor<EncapsulationMode>(&FdNetDevice::m_encapMode),
                           MakeEnumChecker(DIX, "Dix", LLC, "Llc", DIXPI, "DixPi"))
             .AddAttribute("RxQueueSize",
                           "Maximum size of the read queue.  "
@@ -350,7 +350,7 @@ static void
 AddPIHeader(uint8_t*& buf, size_t& len)
 {
     // Synthesize PI header for our friend the kernel
-    uint8_t* buf2 = (uint8_t*)malloc(len + 4);
+    auto buf2 = (uint8_t*)malloc(len + 4);
     memcpy(buf2 + 4, buf, len);
     len += 4;
 
@@ -570,7 +570,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
     NS_LOG_FUNCTION(this << packet << src << dest << protocolNumber);
     NS_LOG_LOGIC("packet: " << packet << " UID: " << packet->GetUid());
 
-    if (IsLinkUp() == false)
+    if (!IsLinkUp())
     {
         m_macTxDropTrace(packet);
         return false;
@@ -617,7 +617,7 @@ FdNetDevice::SendFrom(Ptr<Packet> packet,
 
     NS_LOG_LOGIC("calling write");
 
-    size_t len = (size_t)packet->GetSize();
+    auto len = (size_t)packet->GetSize();
     uint8_t* buffer = AllocateBuffer(len);
     if (!buffer)
     {
@@ -752,7 +752,7 @@ FdNetDevice::SetIsBroadcast(bool broadcast)
 Address
 FdNetDevice::GetBroadcast() const
 {
-    return Mac48Address("ff:ff:ff:ff:ff:ff");
+    return Mac48Address::GetBroadcast();
 }
 
 bool

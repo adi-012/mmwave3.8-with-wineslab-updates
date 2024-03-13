@@ -129,7 +129,6 @@ set(source_files
 )
 
 set(header_files
-    ${header_files}
     helper/internet-stack-helper.h
     helper/internet-trace-helper.h
     helper/ipv4-address-helper.h
@@ -262,6 +261,7 @@ endif()
 set(test_sources
     test/global-route-manager-impl-test-suite.cc
     test/icmp-test.cc
+    test/internet-stack-helper-test-suite.cc
     test/ipv4-address-generator-test-suite.cc
     test/ipv4-address-helper-test-suite.cc
     test/ipv4-deduplication-test.cc
@@ -340,10 +340,7 @@ build_lib(
   SOURCE_FILES ${source_files}
   HEADER_FILES ${header_files}
   PRIVATE_HEADER_FILES ${private_header_files}
-  LIBRARIES_TO_LINK
-    ${libnetwork}
-    ${libcore}
-    ${libbridge}
-    ${libtraffic-control}
+  LIBRARIES_TO_LINK ${libbridge}
+                    ${libtraffic-control}
   TEST_SOURCES ${test_sources}
 )

@@ -32,6 +32,9 @@
 
 #include <array>
 
+#undef NS_LOG_APPEND_CONTEXT
+#define NS_LOG_APPEND_CONTEXT WIFI_PHY_NS_LOG_APPEND_CONTEXT(m_wifiPhy)
+
 namespace ns3
 {
 
@@ -74,7 +77,7 @@ const std::array<uint64_t, 4>&
 GetDsssRatesBpsList()
 {
     return s_dsssRatesBpsList;
-};
+}
 
 DsssPhy::DsssPhy()
 {
@@ -200,8 +203,7 @@ DsssPhy::BuildPpdu(const WifiConstPsduMap& psdus, const WifiTxVector& txVector, 
     NS_LOG_FUNCTION(this << psdus << txVector << ppduDuration);
     return Create<DsssPpdu>(psdus.begin()->second,
                             txVector,
-                            m_wifiPhy->GetOperatingChannel().GetPrimaryChannelCenterFrequency(
-                                txVector.GetChannelWidth()),
+                            m_wifiPhy->GetOperatingChannel(),
                             ppduDuration,
                             ObtainNextUid(txVector));
 }
@@ -312,7 +314,7 @@ DsssPhy::GetDsssRate(uint64_t rate)
     {                                                                                              \
         static WifiMode mode = CreateDsssMode(#x, WIFI_MOD_CLASS_##m);                             \
         return mode;                                                                               \
-    };
+    }
 
 // Clause 15 rates (DSSS)
 GET_DSSS_MODE(DsssRate1Mbps, DSSS)
@@ -381,7 +383,7 @@ DsssPhy::GetDataRate(const std::string& name, WifiModulationClass modClass)
         NS_FATAL_ERROR("Incorrect modulation class, must specify either WIFI_MOD_CLASS_DSSS or "
                        "WIFI_MOD_CLASS_HR_DSSS!");
     }
-    uint16_t numberOfBitsPerSubcarrier = static_cast<uint16_t>(log2(constellationSize));
+    auto numberOfBitsPerSubcarrier = static_cast<uint16_t>(log2(constellationSize));
     uint64_t dataRate = ((11000000 / divisor) * numberOfBitsPerSubcarrier);
     return dataRate;
 }

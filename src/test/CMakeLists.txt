@@ -3,7 +3,8 @@ set(dsr_sources)
 # cmake-format: off
 if((dsr IN_LIST ns3-all-enabled-modules)
     AND (uan IN_LIST ns3-all-enabled-modules)
-    AND (olsr IN_LIST ns3-all-enabled-modules))
+    AND (olsr IN_LIST ns3-all-enabled-modules)
+    AND (lte IN_LIST ns3-all-enabled-modules))
   set(dsr_sources traced/traced-callback-typedef-test-suite.cc)
 endif()
 # cmake-format: on
@@ -21,6 +22,7 @@ if(applications
   )
     # cmake-format: off
     set(applications_sources
+        ns3tcp/ns3tcp-cubic-test-suite.cc
         ns3tcp/ns3tcp-loss-test-suite.cc
         ns3tcp/ns3tcp-no-delay-test-suite.cc
         ns3tcp/ns3tcp-socket-test-suite.cc

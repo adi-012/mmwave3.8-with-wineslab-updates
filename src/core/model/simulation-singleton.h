@@ -21,7 +21,7 @@
 
 /**
  * \file
- * \ingroup core
+ * \ingroup singleton
  * ns3::SimulationSingleton declaration and template implementation.
  */
 
@@ -29,7 +29,7 @@ namespace ns3
 {
 
 /**
- * \ingroup core
+ * \ingroup singleton
  * This singleton class template ensures that the type
  * for which we want a singleton has a lifetime bounded
  * by the simulation run lifetime. That it, the underlying
@@ -44,9 +44,9 @@ class SimulationSingleton
 {
   public:
     // Delete default constructor, copy constructor and assignment operator to avoid misuse
-    SimulationSingleton<T>() = delete;
-    SimulationSingleton<T>(const SimulationSingleton<T>&) = delete;
-    SimulationSingleton<T>& operator=(const SimulationSingleton<T>&) = delete;
+    SimulationSingleton() = delete;
+    SimulationSingleton(const SimulationSingleton<T>&) = delete;
+    SimulationSingleton& operator=(const SimulationSingleton<T>&) = delete;
 
     /**
      * Get a pointer to the singleton instance.

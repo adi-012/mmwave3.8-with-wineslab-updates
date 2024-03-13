@@ -22,12 +22,17 @@
 
 /**
  * \file
- * \ingroup core
+ * \ingroup deprecation
  * NS_DEPRECATED macro definition.
  */
 
 /**
+ * \defgroup deprecation Deprecation
  * \ingroup core
+ */
+
+/**
+ * \ingroup deprecation
  * \def NS_DEPRECATED
  * Mark a function as deprecated.
  *
@@ -75,24 +80,24 @@
 #define NS_DEPRECATED(msg) [[deprecated(msg)]]
 
 /**
- * \ingroup core
- * \def NS_DEPRECATED_3_38
- * Tag for things deprecated in version ns-3.38.
+ * \ingroup deprecation
+ * \def NS_DEPRECATED_3_42
+ * Tag for things deprecated in version ns-3.42.
  */
-#define NS_DEPRECATED_3_38(msg) NS_DEPRECATED(msg)
+#define NS_DEPRECATED_3_42(msg) NS_DEPRECATED(msg)
 
 /**
- * \ingroup core
- * \def NS_DEPRECATED_3_37
- * Tag for things deprecated in version ns-3.37.
+ * \ingroup deprecation
+ * \def NS_DEPRECATED_3_41
+ * Tag for things deprecated in version ns-3.41.
  */
-#define NS_DEPRECATED_3_37(msg) NS_DEPRECATED(msg)
+#define NS_DEPRECATED_3_41(msg) NS_DEPRECATED(msg)
 
 /**
- * \ingroup core
- * \def NS_DEPRECATED_3_36
- * Tag for things deprecated in version ns-3.36.
+ * \ingroup deprecation
+ * \def NS_DEPRECATED_3_40
+ * Tag for things deprecated in version ns-3.40.
  */
-#define NS_DEPRECATED_3_36(msg) NS_DEPRECATED(msg)
+#define NS_DEPRECATED_3_40(msg) NS_DEPRECATED(msg)
 
 #endif /* NS3_DEPRECATED_H */

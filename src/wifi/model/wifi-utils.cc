@@ -57,9 +57,9 @@ RatioToDb(double ratio)
 uint32_t
 GetAckSize()
 {
-    WifiMacHeader ack;
-    ack.SetType(WIFI_MAC_CTL_ACK);
-    return ack.GetSize() + 4;
+    static const uint32_t size = WifiMacHeader(WIFI_MAC_CTL_ACK).GetSize() + 4;
+
+    return size;
 }
 
 uint32_t
@@ -102,17 +102,17 @@ GetMuBarSize(std::list<BlockAckReqType> types)
 uint32_t
 GetRtsSize()
 {
-    WifiMacHeader rts;
-    rts.SetType(WIFI_MAC_CTL_RTS);
-    return rts.GetSize() + 4;
+    static const uint32_t size = WifiMacHeader(WIFI_MAC_CTL_RTS).GetSize() + 4;
+
+    return size;
 }
 
 uint32_t
 GetCtsSize()
 {
-    WifiMacHeader cts;
-    cts.SetType(WIFI_MAC_CTL_CTS);
-    return cts.GetSize() + 4;
+    static const uint32_t size = WifiMacHeader(WIFI_MAC_CTL_CTS).GetSize() + 4;
+
+    return size;
 }
 
 bool
@@ -142,6 +142,39 @@ GetSize(Ptr<const Packet> packet, const WifiMacHeader* hdr, bool isAmpdu)
         size = packet->GetSize() + hdr->GetSize() + fcs.GetSerializedSize();
     }
     return size;
+}
+
+bool
+TidToLinkMappingValidForNegType1(const WifiTidLinkMapping& dlLinkMapping,
+                                 const WifiTidLinkMapping& ulLinkMapping)
+{
+    if (dlLinkMapping.empty() && ulLinkMapping.empty())
+    {
+        // default mapping is valid
+        return true;
+    }
+
+    if (dlLinkMapping.size() != 8 || ulLinkMapping.size() != 8)
+    {
+        // not all TIDs have been mapped
+        return false;
+    }
+
+    const auto& linkSet = dlLinkMapping.cbegin()->second;
+
+    for (const auto& linkMapping : {std::cref(dlLinkMapping), std::cref(ulLinkMapping)})
+    {
+        for (const auto& [tid, links] : linkMapping.get())
+        {
+            if (links != linkSet)
+            {
+                // distinct link sets
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace ns3

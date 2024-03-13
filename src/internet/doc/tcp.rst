@@ -57,7 +57,7 @@ Model history
 +++++++++++++
 
 Until the ns-3.10 release, |ns3| contained a port of the TCP model from `GTNetS
-<http://www.ece.gatech.edu/research/labs/MANIACS/GTNetS/index.html>`_,
+<https://web.archive.org/web/20210928123443/http://griley.ece.gatech.edu/MANIACS/GTNetS/index.html>`_,
 developed initially by George Riley and ported to |ns3| by Raj Bhattacharjea.
 This implementation was substantially rewritten by Adriam Tam for ns-3.10.
 In 2015, the TCP module was redesigned in order to create a better
@@ -88,6 +88,10 @@ Recovery algorithm.
 
 In the ns-3.34 release, the default congestion control algorithm was set
 to CUBIC from NewReno.
+
+CUBIC was extended to support Reno-friendliness (see RFC 9438 Section 4.3) in
+the ns-3.41 release.  This feature is called 'TCP friendliness' in earlier
+versions of the CUBIC RFCs, and in the Linux and ns-3 implementations.
 
 Acknowledgments
 +++++++++++++++
@@ -417,11 +421,10 @@ algorithm uses observations of delay increases in the slow start
 phase of window growth to try to exit slow start before window growth
 causes queue overflow.
 
-CUBIC is documented in :rfc:`8312`, and the |ns3| implementation is based
-on the RFC more so than the Linux implementation, although the Linux 4.4
-kernel implementation (through the Direct Code Execution environment) has
-been used to validate the behavior and is fairly well aligned (see below
-section on validation).
+CUBIC is documented in :rfc:`9438`, and the |ns3| implementation is patterned
+partly on the Linux implementation and partly on the RFC, although the Linux
+4.4 kernel implementation (through the Direct Code Execution environment) has
+been used to validate the behavior.
 
 Linux Reno
 ^^^^^^^^^^
@@ -456,7 +459,7 @@ cwnd, 'bytes_acked' is reduced by the value of cwnd. Next, cwnd is incremented
 by a full-sized segment (SMSS).  In contrast, in ns-3 NewReno, cwnd is increased
 by (1/cwnd) with a rounding off due to type casting into int.
 
-.. code-block::
+.. code-block:: c++
    :caption: Linux Reno `cwnd` update
 
    if (m_cWndCnt >= w)
@@ -469,7 +472,7 @@ by (1/cwnd) with a rounding off due to type casting into int.
    }
 
 
-.. code-block::
+.. code-block:: c++
    :caption: New Reno `cwnd` update
 
    if (segmentsAcked > 0)
@@ -1029,6 +1032,13 @@ environment. Some differences were noted:
   be sent are less than two, Linux does not pace them and instead sends
   them back-to-back. Currently, ns-3 paces out all packets eligible to
   be sent in the same manner.
+
+It is important to also note that the current model does not implement
+Section 3.5 of RFC 8257 regarding the handling of packet loss.  This
+requirement states that DCTCP must react to lost packets in the same way
+as does a conventional TCP (as specified in RFC 5681).  The current
+DCTCP model does not implement this, and should therefore only be used
+in simulations that do not involve any packet loss on the DCTCP flows.
 
 More information about DCTCP is available in the RFC 8257:
 https://tools.ietf.org/html/rfc8257
@@ -1596,7 +1606,7 @@ SACK based loss recovery is used when sender and receiver support SACK options.
 In the case when SACK options are disabled, the NewReno modification handles
 the recovery.
 
-At the start of recovery phase the congestion window is reduced diffently for
+At the start of recovery phase the congestion window is reduced differently for
 NewReno and SACK based recovery. For NewReno the reduction is done as given below:
 
 .. math::  cWnd = ssThresh
@@ -1840,7 +1850,7 @@ advertises a zero window. This can be accomplished by implementing the method
 CreateReceiverSocket, setting an Rx buffer value of 0 bytes (at line 6 of the
 following code):
 
-.. code-block::
+.. code-block:: c++
    :linenos:
    :emphasize-lines: 6,7,8
 
@@ -1987,7 +1997,7 @@ we expect the persistent timer to fire before any rWnd changes. When it fires,
 the SENDER should send a window probe, and the receiver should reply reporting
 again a zero window situation. At first, we investigates on what the sender sends:
 
-.. code-block::
+.. code-block:: c++
       :linenos:
       :emphasize-lines: 1,6,7,11
 
@@ -2020,7 +2030,7 @@ reader: edit the test, getting this value from the Attribute system), we need
 to check (line 6) between 6.0 and 7.0 simulated seconds that the probe is sent.
 Only one probe is allowed, and this is the reason for the check at line 11.
 
-.. code-block::
+.. code-block:: c++
    :linenos:
    :emphasize-lines: 6,7
 
@@ -2072,7 +2082,7 @@ the window should be greater than zero (and precisely, set to 2500):
 To be sure that the sender receives the window update, we can use the Rx
 method:
 
-.. code-block::
+.. code-block:: c++
    :linenos:
    :emphasize-lines: 5
 
@@ -2136,7 +2146,6 @@ To run the test, the usual way is
 To see INFO messages, use a combination of ./ns3 shell and gdb (really useful):
 
 .. code-block:: bash
-
 
     ./ns3 shell && gdb --args ./build/utils/ns3-dev-test-runner-debug --test-name=tcp-zero-window-test --stop-on-failure --fullness=QUICK --assert-on-failure --verbose
 

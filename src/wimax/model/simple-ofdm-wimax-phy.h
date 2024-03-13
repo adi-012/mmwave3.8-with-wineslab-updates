@@ -22,6 +22,7 @@
 #define SIMPLE_OFDM_WIMAX_PHY_H
 
 #include "bvec.h"
+#include "snr-to-block-error-rate-manager.h"
 #include "wimax-connection.h"
 #include "wimax-phy.h"
 
@@ -29,7 +30,6 @@
 #include "ns3/event-id.h"
 #include "ns3/nstime.h"
 #include "ns3/random-variable-stream.h"
-#include "ns3/snr-to-block-error-rate-manager.h"
 
 #include <list>
 #include <stdint.h>
@@ -467,7 +467,7 @@ class SimpleOfdmWimaxPhy : public WimaxPhy
     uint16_t m_blockSize;               ///< block size
     uint32_t m_paddingBits;             ///< padding bits
     uint16_t m_nbErroneousBlock;        ///< erroneous blocks
-    uint16_t m_nrRecivedFecBlocks;      ///< number received FEC blocks
+    uint16_t m_nrReceivedFecBlocks;     ///< number received FEC blocks
     uint16_t m_nfft;                    ///< NFFT
     double m_g;                         ///< G value
     double m_bandWidth;                 ///< bandwidth

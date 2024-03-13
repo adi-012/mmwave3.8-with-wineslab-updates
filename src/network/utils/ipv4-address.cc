@@ -52,7 +52,7 @@ Ipv4Mask::Ipv4Mask(const char* mask)
     NS_LOG_FUNCTION(this << mask);
     if (*mask == '/')
     {
-        uint32_t plen = static_cast<uint32_t>(std::atoi(++mask));
+        auto plen = static_cast<uint32_t>(std::atoi(++mask));
         NS_ASSERT(plen <= 32);
         if (plen > 0)
         {
@@ -77,14 +77,7 @@ bool
 Ipv4Mask::IsMatch(Ipv4Address a, Ipv4Address b) const
 {
     NS_LOG_FUNCTION(this << a << b);
-    if ((a.Get() & m_mask) == (b.Get() & m_mask))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return (a.Get() & m_mask) == (b.Get() & m_mask);
 }
 
 uint32_t
@@ -120,7 +113,7 @@ Ipv4Mask
 Ipv4Mask::GetLoopback()
 {
     NS_LOG_FUNCTION_NOARGS();
-    static Ipv4Mask loopback = Ipv4Mask("255.0.0.0");
+    static Ipv4Mask loopback("255.0.0.0");
     return loopback;
 }
 
@@ -128,7 +121,7 @@ Ipv4Mask
 Ipv4Mask::GetZero()
 {
     NS_LOG_FUNCTION_NOARGS();
-    static Ipv4Mask zero = Ipv4Mask("0.0.0.0");
+    static Ipv4Mask zero("0.0.0.0");
     return zero;
 }
 
@@ -136,7 +129,7 @@ Ipv4Mask
 Ipv4Mask::GetOnes()
 {
     NS_LOG_FUNCTION_NOARGS();
-    static Ipv4Mask ones = Ipv4Mask("255.255.255.255");
+    static Ipv4Mask ones("255.255.255.255");
     return ones;
 }
 
@@ -255,7 +248,7 @@ bool
 Ipv4Address::IsInitialized() const
 {
     NS_LOG_FUNCTION(this);
-    return (m_initialized);
+    return m_initialized;
 }
 
 bool

@@ -21,10 +21,11 @@
 #ifndef MESH_WIFI_INTERFACE_MAC_H
 #define MESH_WIFI_INTERFACE_MAC_H
 
+#include "mesh-wifi-interface-mac-plugin.h"
+
 #include "ns3/callback.h"
 #include "ns3/event-id.h"
 #include "ns3/mac48-address.h"
-#include "ns3/mesh-wifi-interface-mac-plugin.h"
 #include "ns3/mgt-headers.h"
 #include "ns3/nstime.h"
 #include "ns3/packet.h"
@@ -163,13 +164,13 @@ class MeshWifiInterfaceMac : public WifiMac
      * \param rates Rates.
      * \return true if rates are supported
      */
-    bool CheckSupportedRates(SupportedRates rates) const;
+    bool CheckSupportedRates(AllSupportedRates rates) const;
 
     /**
      * Get supported rates.
      * \return list of supported bitrates
      */
-    SupportedRates GetSupportedRates() const;
+    AllSupportedRates GetSupportedRates() const;
 
     /// \name Metric Calculation routines:
     ///@{

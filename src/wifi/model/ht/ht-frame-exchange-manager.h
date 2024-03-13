@@ -26,8 +26,6 @@
 #include "ns3/wifi-psdu.h"
 
 class AmpduAggregationTest;
-class TwoLevelAggregationTest;
-class HeAggregationTest;
 
 namespace ns3
 {
@@ -46,10 +44,6 @@ class HtFrameExchangeManager : public QosFrameExchangeManager
   public:
     /// allow AmpduAggregationTest class access
     friend class ::AmpduAggregationTest;
-    /// allow TwoLevelAggregationTest class access
-    friend class ::TwoLevelAggregationTest;
-    /// allow HeAggregationTest class access
-    friend class ::HeAggregationTest;
 
     /**
      * \brief Get the type ID.
@@ -148,13 +142,6 @@ class HtFrameExchangeManager : public QosFrameExchangeManager
      * \param originator the MAC address of the originator.
      */
     void SendAddBaResponse(const MgtAddBaRequestHeader* reqHdr, Mac48Address originator);
-    /**
-     * Get the maximum supported buffer size for a Block Ack agreement. This value
-     * is typically included in ADDBA Response frames.
-     *
-     * \return the maximum supported buffer size for a Block Ack agreement
-     */
-    virtual uint16_t GetSupportedBaBufferSize() const;
 
     /**
      * Sends DELBA frame to cancel a block ack agreement with STA
@@ -197,8 +184,10 @@ class HtFrameExchangeManager : public QosFrameExchangeManager
     void RetransmitMpduAfterMissedAck(Ptr<WifiMpdu> mpdu) const override;
     void ReleaseSequenceNumbers(Ptr<const WifiPsdu> psdu) const override;
     void ForwardMpduDown(Ptr<WifiMpdu> mpdu, WifiTxVector& txVector) override;
+    void FinalizeMacHeader(Ptr<const WifiPsdu> psdu) override;
     void CtsTimeout(Ptr<WifiMpdu> rts, const WifiTxVector& txVector) override;
     void TransmissionSucceeded() override;
+    void ProtectionCompleted() override;
 
     /**
      * Get a PSDU containing the given MPDU
@@ -315,12 +304,16 @@ class HtFrameExchangeManager : public QosFrameExchangeManager
      * \param startingSeq the BA agreement starting sequence number
      * \param timeout timeout value.
      * \param immediateBAck flag to indicate whether immediate BlockAck is used.
+     * \param availableTime the amount of time allowed for the frame exchange. Equals
+     *                      Time::Min() in case the TXOP limit is null
+     * \return true if ADDBA Request frame is transmitted, false otherwise
      */
-    void SendAddBaRequest(Mac48Address recipient,
+    bool SendAddBaRequest(Mac48Address recipient,
                           uint8_t tid,
                           uint16_t startingSeq,
                           uint16_t timeout,
-                          bool immediateBAck);
+                          bool immediateBAck,
+                          Time availableTime);
 
     /**
      * Create a BlockAck frame with header equal to <i>blockAck</i> and start its transmission.
