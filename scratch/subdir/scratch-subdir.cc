@@ -1,3 +1,4 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -27,24 +28,22 @@
 // defined in the "scratch-subdir-additional-header.h" header file and
 // implemented in "scratch-subdir-additional-header.cc".
 
-#include "scratch-subdir-additional-header.h"
-
 #include "ns3/core-module.h"
-
+#include "scratch-subdir-additional-header.h"
 #include <string>
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("ScratchSubdir");
+NS_LOG_COMPONENT_DEFINE ("ScratchSubdir");
 
 int
-main(int argc, char* argv[])
+main (int argc, char *argv[])
 {
-    std::string message = ScratchSubdirGetMessage();
-    NS_LOG_UNCOND(message);
+  std::string message = ScratchSubdirGetMessage ();
+  NS_LOG_UNCOND (message);
 
-    Simulator::Run();
-    Simulator::Destroy();
+  Simulator::Run ();
+  Simulator::Destroy ();
 
-    return 0;
+  return 0;
 }

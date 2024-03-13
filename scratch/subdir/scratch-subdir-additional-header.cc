@@ -1,3 +1,4 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,13 +19,12 @@
 
 #include "scratch-subdir-additional-header.h"
 
-namespace ns3
-{
+namespace ns3 {
 
 std::string
-ScratchSubdirGetMessage()
+ScratchSubdirGetMessage ()
 {
-    return "Scratch Subdir";
+  return "Scratch Subdir";
 }
 
 } // namespace ns3
