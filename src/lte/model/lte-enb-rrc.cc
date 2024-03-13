@@ -1066,7 +1066,7 @@ UeManager::ForwardRlcBuffers(Ptr<LteRlc> rlc,
                               << " Size = " << txonBufferSize);
 
             Ptr<Packet> segmentedRlcsdu = rlcAm->GetSegmentedRlcsdu();
-            if (segmentedRlcsdu != NULL)
+            if (segmentedRlcsdu)
             {
                 segmentedRlcsdu->PeekHeader(pdcpHeader);
                 NS_LOG_DEBUG(this << "SegmentedRlcSdu = " << segmentedRlcsdu->GetSize()
@@ -1088,7 +1088,7 @@ UeManager::ForwardRlcBuffers(Ptr<LteRlc> rlc,
                  it != rlcAmTxedSduBuffer.end();
                  ++it)
             {
-                if ((*it) != NULL)
+                if ((*it))
                 {
                     (*it)->PeekHeader(pdcpHeader);
                     NS_LOG_DEBUG("rlcAmTxedSduBuffer SEQ = " << pdcpHeader.GetSequenceNumber()
@@ -1287,7 +1287,7 @@ UeManager::SendData(uint8_t bid, Ptr<Packet> p)
         if (it != m_drbMap.end())
         {
             Ptr<LteDataRadioBearerInfo> bearerInfo = GetDataRadioBearerInfo(drbid);
-            if (bearerInfo != NULL)
+            if (bearerInfo)
             {
                 LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider();
                 pdcpSapProvider->TransmitPdcpSdu(params);
