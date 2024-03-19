@@ -20,10 +20,11 @@
 #ifndef IPV6_STATIC_ROUTING_H
 #define IPV6_STATIC_ROUTING_H
 
+#include "ipv6-header.h"
+#include "ipv6-routing-protocol.h"
+#include "ipv6.h"
+
 #include "ns3/ipv6-address.h"
-#include "ns3/ipv6-header.h"
-#include "ns3/ipv6-routing-protocol.h"
-#include "ns3/ipv6.h"
 #include "ns3/ptr.h"
 
 #include <list>
@@ -257,10 +258,10 @@ class Ipv6StaticRouting : public Ipv6RoutingProtocol
     bool RouteInput(Ptr<const Packet> p,
                     const Ipv6Header& header,
                     Ptr<const NetDevice> idev,
-                    UnicastForwardCallback ucb,
-                    MulticastForwardCallback mcb,
-                    LocalDeliverCallback lcb,
-                    ErrorCallback ecb) override;
+                    const UnicastForwardCallback& ucb,
+                    const MulticastForwardCallback& mcb,
+                    const LocalDeliverCallback& lcb,
+                    const ErrorCallback& ecb) override;
 
     void NotifyInterfaceUp(uint32_t interface) override;
     void NotifyInterfaceDown(uint32_t interface) override;

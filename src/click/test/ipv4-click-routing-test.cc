@@ -17,8 +17,6 @@
  * Authors: Lalith Suresh <suresh.lalith@gmail.com>
  */
 
-#ifdef NS3_CLICK
-
 #include "ns3/click-internet-stack-helper.h"
 #include "ns3/ipv4-click-routing.h"
 #include "ns3/ipv4-l3-protocol.h"
@@ -32,6 +30,23 @@
 
 using namespace ns3;
 
+/**
+ * \ingroup click
+ * \defgroup click-tests click module tests
+ */
+
+/**
+ * \file
+ * \ingroup click-tests
+ * Click test suite.
+ */
+
+/**
+ * \ingroup click-tests
+ * Add Click Internet stack.
+ *
+ * \param node Node.
+ */
 static void
 AddClickInternetStack(Ptr<Node> node)
 {
@@ -40,6 +55,15 @@ AddClickInternetStack(Ptr<Node> node)
     internet.Install(node);
 }
 
+/**
+ * \ingroup click-tests
+ * Add network device.
+ *
+ * \param node Node.
+ * \param macaddr MAC address.
+ * \param ipv4addr IPv4 address.
+ * \param ipv4mask IPv4 mask.
+ */
 static void
 AddNetworkDevice(Ptr<Node> node, Mac48Address macaddr, Ipv4Address ipv4addr, Ipv4Mask ipv4mask)
 {
@@ -56,6 +80,10 @@ AddNetworkDevice(Ptr<Node> node, Mac48Address macaddr, Ipv4Address ipv4addr, Ipv
     ipv4->SetUp(netdev_idx);
 }
 
+/**
+ * \ingroup click-tests
+ * Click interface ID from name test.
+ */
 class ClickIfidFromNameTest : public TestCase
 {
   public:
@@ -102,6 +130,10 @@ ClickIfidFromNameTest::DoRun()
     NS_TEST_EXPECT_MSG_EQ(ret, -1, "No eth1 on node");
 }
 
+/**
+ * \ingroup click-tests
+ * Click IP MAC address from name test.
+ */
 class ClickIpMacAddressFromNameTest : public TestCase
 {
   public:
@@ -162,6 +194,10 @@ ClickIpMacAddressFromNameTest::DoRun()
     delete[] buf;
 }
 
+/**
+ * \ingroup click-tests
+ * Click trivial test.
+ */
 class ClickTrivialTest : public TestCase
 {
   public:
@@ -206,6 +242,10 @@ ClickTrivialTest::DoRun()
     delete[] buf;
 }
 
+/**
+ * \ingroup click-tests
+ * Click interface ID from name test.
+ */
 class ClickIfidFromNameTestSuite : public TestSuite
 {
   public:
@@ -216,6 +256,7 @@ class ClickIfidFromNameTestSuite : public TestSuite
         AddTestCase(new ClickIfidFromNameTest, TestCase::QUICK);
         AddTestCase(new ClickIpMacAddressFromNameTest, TestCase::QUICK);
     }
-} g_ipv4ClickRoutingTestSuite;
+};
 
-#endif // NS3_CLICK
+/// Static variable for test initialization
+static ClickIfidFromNameTestSuite g_ipv4ClickRoutingTestSuite;

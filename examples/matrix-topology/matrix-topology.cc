@@ -60,7 +60,7 @@ using namespace ns3;
 // ---------- Prototypes ------------------------------------------------------
 
 std::vector<std::vector<bool>> readNxNMatrix(std::string adj_mat_file_name);
-std::vector<std::vector<double>> readCordinatesFile(std::string node_coordinates_file_name);
+std::vector<std::vector<double>> readCoordinatesFile(std::string node_coordinates_file_name);
 void printCoordinateArray(const char* description, std::vector<std::vector<double>> coord_array);
 void printMatrix(const char* description, std::vector<std::vector<bool>> array);
 
@@ -115,7 +115,7 @@ main(int argc, char* argv[])
     // ---------- Read Node Coordinates File -----------------------------------
 
     std::vector<std::vector<double>> coord_array;
-    coord_array = readCordinatesFile(node_coordinates_file_name);
+    coord_array = readCoordinatesFile(node_coordinates_file_name);
 
     // Optionally display node coordinates file
     // printCoordinateArray (node_coordinates_file_name.c_str (),coord_array);
@@ -163,7 +163,7 @@ main(int argc, char* argv[])
     {
         for (size_t j = 0; j < Adj_Matrix[i].size(); j++)
         {
-            if (Adj_Matrix[i][j] == 1)
+            if (Adj_Matrix[i][j])
             {
                 NodeContainer n_links = NodeContainer(nodes.Get(i), nodes.Get(j));
                 NetDeviceContainer n_devs = p2p.Install(n_links);
@@ -361,7 +361,7 @@ readNxNMatrix(std::string adj_mat_file_name)
 }
 
 std::vector<std::vector<double>>
-readCordinatesFile(std::string node_coordinates_file_name)
+readCoordinatesFile(std::string node_coordinates_file_name)
 {
     std::ifstream node_coordinates_file;
     node_coordinates_file.open(node_coordinates_file_name, std::ios::in);

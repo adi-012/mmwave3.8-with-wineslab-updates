@@ -27,6 +27,7 @@
 #include "ns3/error-model.h"
 #include "ns3/fcfs-wifi-queue-scheduler.h"
 #include "ns3/frame-exchange-manager.h"
+#include "ns3/header-serialization-test.h"
 #include "ns3/ht-configuration.h"
 #include "ns3/interference-helper.h"
 #include "ns3/mgt-headers.h"
@@ -47,6 +48,7 @@
 #include "ns3/wifi-default-ack-manager.h"
 #include "ns3/wifi-default-assoc-manager.h"
 #include "ns3/wifi-default-protection-manager.h"
+#include "ns3/wifi-mgt-header.h"
 #include "ns3/wifi-net-device.h"
 #include "ns3/wifi-ppdu.h"
 #include "ns3/wifi-psdu.h"
@@ -54,6 +56,8 @@
 #include "ns3/yans-error-rate-model.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/yans-wifi-phy.h"
+
+#include <optional>
 
 using namespace ns3;
 
@@ -324,7 +328,7 @@ void
 InterferenceHelperSequenceTest::SwitchCh(Ptr<WifiNetDevice> dev)
 {
     Ptr<WifiPhy> p = dev->GetPhy();
-    p->SetOperatingChannel(WifiPhy::ChannelTuple{40, 0, (int)(WIFI_PHY_BAND_5GHZ), 0});
+    p->SetOperatingChannel(WifiPhy::ChannelTuple{40, 0, WIFI_PHY_BAND_5GHZ, 0});
 }
 
 Ptr<Node>
@@ -1181,7 +1185,6 @@ SetChannelFrequencyTest::DoRun()
         staDevice = wifi.Install(phy, macSta, wifiStaNode.Get(0));
         phySta = GetYansWifiPhyPtr(staDevice);
         phySta->SetAttribute("ChannelSettings", StringValue("{3, 20, BAND_2_4GHZ, 0}"));
-        return;
         // Post-install reconfiguration to a 40 MHz channel
         std::ostringstream path;
         path << "/NodeList/*/DeviceList/" << staDevice.Get(0)->GetIfIndex()
@@ -1575,9 +1578,7 @@ Bug2843TestCase::StoreDistinctTuple(std::string context, Ptr<SpectrumSignalParam
     FreqWidthSubbandModulationTuple tupleForCurrentTx =
         std::make_tuple(startingFreq, m_channelWidth, numBands, modulationClass);
     bool found = false;
-    for (std::vector<FreqWidthSubbandModulationTuple>::const_iterator it = m_distinctTuples.begin();
-         it != m_distinctTuples.end();
-         it++)
+    for (auto it = m_distinctTuples.begin(); it != m_distinctTuples.end(); it++)
     {
         if (*it == tupleForCurrentTx)
         {
@@ -1771,8 +1772,8 @@ Bug2831TestCase::~Bug2831TestCase()
 void
 Bug2831TestCase::ChangeSupportedChannelWidth()
 {
-    m_apPhy->SetOperatingChannel(WifiPhy::ChannelTuple{38, 40, (int)(WIFI_PHY_BAND_5GHZ), 0});
-    m_staPhy->SetOperatingChannel(WifiPhy::ChannelTuple{38, 40, (int)(WIFI_PHY_BAND_5GHZ), 0});
+    m_apPhy->SetOperatingChannel(WifiPhy::ChannelTuple{38, 40, WIFI_PHY_BAND_5GHZ, 0});
+    m_staPhy->SetOperatingChannel(WifiPhy::ChannelTuple{38, 40, WIFI_PHY_BAND_5GHZ, 0});
 }
 
 void
@@ -1795,7 +1796,7 @@ Bug2831TestCase::RxCallback(std::string context,
     {
         MgtBeaconHeader beacon;
         packet->RemoveHeader(beacon);
-        const auto& htOperation = beacon.GetHtOperation();
+        const auto& htOperation = beacon.Get<HtOperation>();
         if (htOperation.has_value() && htOperation->GetStaChannelWidth() > 0)
         {
             m_countOperationalChannelWidth40++;
@@ -1842,7 +1843,7 @@ Bug2831TestCase::DoRun()
     m_apPhy->SetMobility(apMobility);
     m_apPhy->SetDevice(apDev);
     m_apPhy->ConfigureStandard(WIFI_STANDARD_80211ax);
-    m_apPhy->SetOperatingChannel(WifiPhy::ChannelTuple{36, 20, (int)(WIFI_PHY_BAND_5GHZ), 0});
+    m_apPhy->SetOperatingChannel(WifiPhy::ChannelTuple{36, 20, WIFI_PHY_BAND_5GHZ, 0});
 
     ObjectFactory mac;
     mac.SetTypeId("ns3::ApWifiMac");
@@ -1883,7 +1884,7 @@ Bug2831TestCase::DoRun()
     m_staPhy->SetMobility(staMobility);
     m_staPhy->SetDevice(apDev);
     m_staPhy->ConfigureStandard(WIFI_STANDARD_80211ax);
-    m_staPhy->SetOperatingChannel(WifiPhy::ChannelTuple{36, 20, (int)(WIFI_PHY_BAND_5GHZ), 0});
+    m_staPhy->SetOperatingChannel(WifiPhy::ChannelTuple{36, 20, WIFI_PHY_BAND_5GHZ, 0});
 
     mac.SetTypeId("ns3::StaWifiMac");
     auto staMac = mac.Create<WifiMac>();
@@ -3626,6 +3627,157 @@ HeRuMcsDataRateTestCase::DoRun()
                           "Data rate verification for RUs above 52-tone RU (included) failed");
 }
 
+/// List of Information Elements included in the test management frame
+using MgtTestElems =
+    std::tuple<SupportedRates, std::optional<ExtendedSupportedRatesIE>, std::vector<Ssid>>;
+
+/**
+ * \ingroup wifi-test
+ * \ingroup tests
+ *
+ * \brief Test management header
+ */
+class MgtTestHeader : public WifiMgtHeader<MgtTestHeader, MgtTestElems>
+{
+  public:
+    ~MgtTestHeader() override = default;
+
+    /**
+     * Register this type.
+     * \return The TypeId.
+     */
+    static TypeId GetTypeId();
+
+    /**
+     * \return the TypeId for this object.
+     */
+    TypeId GetInstanceTypeId() const override;
+
+    using WifiMgtHeader<MgtTestHeader, MgtTestElems>::GetSerializedSize;
+    using WifiMgtHeader<MgtTestHeader, MgtTestElems>::Serialize;
+    using WifiMgtHeader<MgtTestHeader, MgtTestElems>::Deserialize;
+};
+
+TypeId
+MgtTestHeader::GetTypeId()
+{
+    static TypeId tid = TypeId("ns3::MgtTestHeader")
+                            .SetParent<Header>()
+                            .SetGroupName("Wifi")
+                            .AddConstructor<MgtTestHeader>();
+    return tid;
+}
+
+TypeId
+MgtTestHeader::GetInstanceTypeId() const
+{
+    return GetTypeId();
+}
+
+/**
+ * \ingroup wifi-test
+ * \ingroup tests
+ *
+ * \brief Mgt header (de)serialization Test Suite
+ */
+class WifiMgtHeaderTest : public HeaderSerializationTestCase
+{
+  public:
+    WifiMgtHeaderTest();
+    ~WifiMgtHeaderTest() override = default;
+
+  private:
+    void DoRun() override;
+};
+
+WifiMgtHeaderTest::WifiMgtHeaderTest()
+    : HeaderSerializationTestCase("Check (de)serialization of a test management header")
+{
+}
+
+void
+WifiMgtHeaderTest::DoRun()
+{
+    MgtTestHeader frame;
+
+    // Add the mandatory Information Element (SupportedRates)
+    AllSupportedRates allRates;
+    allRates.AddSupportedRate(1000000);
+    allRates.AddSupportedRate(2000000);
+    allRates.AddSupportedRate(3000000);
+    allRates.AddSupportedRate(4000000);
+    allRates.AddSupportedRate(5000000);
+
+    frame.Get<SupportedRates>() = allRates.rates;
+    frame.Get<ExtendedSupportedRatesIE>() = allRates.extendedRates;
+
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<SupportedRates>().has_value(),
+                          true,
+                          "Expected a SupportedRates IE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<ExtendedSupportedRatesIE>().has_value(),
+                          false,
+                          "Expected no ExtendedSupportedRatesIE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<Ssid>().size(), 0, "Expected no Ssid IE to be included");
+
+    TestHeaderSerialization(frame);
+
+    // Add more rates, so that the optional Information Element (ExtendedSupportedRatesIE) is added
+    allRates.AddSupportedRate(6000000);
+    allRates.AddSupportedRate(7000000);
+    allRates.AddSupportedRate(8000000);
+    allRates.AddSupportedRate(9000000);
+    allRates.AddSupportedRate(10000000);
+
+    frame.Get<SupportedRates>() = allRates.rates;
+    frame.Get<ExtendedSupportedRatesIE>() = allRates.extendedRates;
+
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<SupportedRates>().has_value(),
+                          true,
+                          "Expected a SupportedRates IE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<ExtendedSupportedRatesIE>().has_value(),
+                          true,
+                          "Expected an ExtendedSupportedRatesIE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<Ssid>().size(), 0, "Expected no Ssid IE to be included");
+
+    TestHeaderSerialization(frame);
+
+    // Add a first Ssid IE
+    Ssid one("Ssid One");
+    frame.Get<Ssid>().push_back(one);
+
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<SupportedRates>().has_value(),
+                          true,
+                          "Expected a SupportedRates IE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<ExtendedSupportedRatesIE>().has_value(),
+                          true,
+                          "Expected an ExtendedSupportedRatesIE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<Ssid>().size(), 1, "Expected one Ssid IE to be included");
+    NS_TEST_EXPECT_MSG_EQ(std::string(frame.Get<Ssid>().front().PeekString()),
+                          "Ssid One",
+                          "Incorrect SSID");
+
+    TestHeaderSerialization(frame);
+
+    // Add a second Ssid IE
+    frame.Get<Ssid>().emplace_back("Ssid Two");
+
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<SupportedRates>().has_value(),
+                          true,
+                          "Expected a SupportedRates IE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<ExtendedSupportedRatesIE>().has_value(),
+                          true,
+                          "Expected an ExtendedSupportedRatesIE to be included");
+    NS_TEST_EXPECT_MSG_EQ(frame.Get<Ssid>().size(), 2, "Expected two Ssid IEs to be included");
+    NS_TEST_EXPECT_MSG_EQ(std::string(frame.Get<Ssid>().front().PeekString()),
+                          "Ssid One",
+                          "Incorrect first SSID");
+    NS_TEST_EXPECT_MSG_EQ(std::string(frame.Get<Ssid>().back().PeekString()),
+                          "Ssid Two",
+                          "Incorrect second SSID");
+
+    TestHeaderSerialization(frame);
+}
+
 /**
  * \ingroup wifi-test
  * \ingroup tests
@@ -3658,6 +3810,7 @@ WifiTestSuite::WifiTestSuite()
     AddTestCase(new IdealRateManagerChannelWidthTest, TestCase::QUICK);
     AddTestCase(new IdealRateManagerMimoTest, TestCase::QUICK);
     AddTestCase(new HeRuMcsDataRateTestCase, TestCase::QUICK);
+    AddTestCase(new WifiMgtHeaderTest, TestCase::QUICK);
 }
 
 static WifiTestSuite g_wifiTestSuite; ///< the test suite

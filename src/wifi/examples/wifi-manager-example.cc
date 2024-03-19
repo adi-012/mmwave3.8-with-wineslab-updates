@@ -211,7 +211,7 @@ main(int argc, char* argv[])
     double stepSize = 1;        // dBm
     double stepTime = 1;        // seconds
     uint32_t packetSize = 1024; // bytes
-    bool broadcast = 0;
+    bool broadcast = false;
     int ap1_x = 0;
     int ap1_y = 0;
     int sta1_x = 5;
@@ -277,7 +277,7 @@ main(int argc, char* argv[])
     std::cout << "Run 'wifi-manager-example --PrintHelp' to show program options." << std::endl
               << std::endl;
 
-    if (infrastructure == false)
+    if (!infrastructure)
     {
         NS_ABORT_MSG_IF(serverNss != clientNss,
                         "In ad hoc mode, we assume sender and receiver are similarly configured");
@@ -289,14 +289,14 @@ main(int argc, char* argv[])
         {
             serverChannelWidth = GetDefaultChannelWidth(WIFI_STANDARD_80211b, WIFI_PHY_BAND_2_4GHZ);
         }
-        NS_ABORT_MSG_IF(serverChannelWidth != 22 && serverChannelWidth != 22,
+        NS_ABORT_MSG_IF(serverChannelWidth != 22,
                         "Invalid channel width for standard " << standard);
         NS_ABORT_MSG_IF(serverNss != 1, "Invalid nss for standard " << standard);
         if (clientChannelWidth == 0)
         {
             clientChannelWidth = GetDefaultChannelWidth(WIFI_STANDARD_80211b, WIFI_PHY_BAND_2_4GHZ);
         }
-        NS_ABORT_MSG_IF(clientChannelWidth != 22 && clientChannelWidth != 22,
+        NS_ABORT_MSG_IF(clientChannelWidth != 22,
                         "Invalid channel width for standard " << standard);
         NS_ABORT_MSG_IF(clientNss != 1, "Invalid nss for standard " << standard);
     }
@@ -635,7 +635,7 @@ main(int argc, char* argv[])
     NetDeviceContainer serverDevice;
     NetDeviceContainer clientDevice;
 
-    TupleValue<UintegerValue, UintegerValue, EnumValue, UintegerValue> channelValue;
+    TupleValue<UintegerValue, UintegerValue, EnumValue<WifiPhyBand>, UintegerValue> channelValue;
 
     WifiMacHelper wifiMac;
     if (infrastructure)
@@ -714,8 +714,8 @@ main(int argc, char* argv[])
     Ptr<WifiNetDevice> wndServer = ndServer->GetObject<WifiNetDevice>();
     Ptr<WifiPhy> wifiPhyPtrClient = wndClient->GetPhy();
     Ptr<WifiPhy> wifiPhyPtrServer = wndServer->GetPhy();
-    uint8_t t_clientNss = static_cast<uint8_t>(clientNss);
-    uint8_t t_serverNss = static_cast<uint8_t>(serverNss);
+    auto t_clientNss = static_cast<uint8_t>(clientNss);
+    auto t_serverNss = static_cast<uint8_t>(serverNss);
     wifiPhyPtrClient->SetNumberOfAntennas(t_clientNss);
     wifiPhyPtrClient->SetMaxSupportedTxSpatialStreams(t_clientNss);
     wifiPhyPtrClient->SetMaxSupportedRxSpatialStreams(t_clientNss);

@@ -31,7 +31,9 @@
 #include <algorithm>
 
 #undef NS_LOG_APPEND_CONTEXT
-#define NS_LOG_APPEND_CONTEXT std::clog << "[address " << m_mac->GetShortAddress() << "] ";
+#define NS_LOG_APPEND_CONTEXT                                                                      \
+    std::clog << "[address " << m_mac->GetShortAddress() << " | " << m_mac->GetExtendedAddress()   \
+              << "] ";
 
 namespace ns3
 {
@@ -113,14 +115,14 @@ bool
 LrWpanCsmaCa::IsSlottedCsmaCa() const
 {
     NS_LOG_FUNCTION(this);
-    return (m_isSlotted);
+    return m_isSlotted;
 }
 
 bool
 LrWpanCsmaCa::IsUnSlottedCsmaCa() const
 {
     NS_LOG_FUNCTION(this);
-    return (!m_isSlotted);
+    return !m_isSlotted;
 }
 
 void

@@ -23,6 +23,7 @@
 #include "ns3/assert.h"
 
 #include <optional>
+#include <tuple>
 
 namespace ns3
 {
@@ -369,6 +370,24 @@ const HeRu::RuAllocationMap HeRu::m_heRuAllocations = {
       {HeRu::RuSpec{HeRu::RU_996_TONE, 1, true}}},
     // clang-format on
 };
+
+HeRu::RuSpecCompare::RuSpecCompare(uint16_t channelWidth, uint8_t p20Index)
+    : m_channelWidth(channelWidth),
+      m_p20Index(p20Index)
+{
+}
+
+bool
+HeRu::RuSpecCompare::operator()(const HeRu::RuSpec& lhs, const HeRu::RuSpec& rhs) const
+{
+    const auto lhsIndex = lhs.GetPhyIndex(m_channelWidth, m_p20Index);
+    const auto rhsIndex = rhs.GetPhyIndex(m_channelWidth, m_p20Index);
+    const auto lhsStartTone =
+        HeRu::GetSubcarrierGroup(m_channelWidth, lhs.GetRuType(), lhsIndex).front().first;
+    const auto rhsStartTone =
+        HeRu::GetSubcarrierGroup(m_channelWidth, rhs.GetRuType(), rhsIndex).front().first;
+    return lhsStartTone < rhsStartTone;
+}
 
 std::vector<HeRu::RuSpec>
 HeRu::GetRuSpecs(uint8_t ruAllocation)
@@ -870,6 +889,16 @@ bool
 HeRu::RuSpec::operator!=(const RuSpec& other) const
 {
     return !(*this == other);
+}
+
+bool
+HeRu::RuSpec::operator<(const RuSpec& other) const
+{
+    // we do not compare the RU PHY indices because they may be uninitialized for
+    // one of the compared RUs. This event should not cause the comparison to evaluate
+    // to false
+    return std::tie(m_ruType, m_index, m_primary80MHz) <
+           std::tie(other.m_ruType, other.m_index, other.m_primary80MHz);
 }
 
 } // namespace ns3

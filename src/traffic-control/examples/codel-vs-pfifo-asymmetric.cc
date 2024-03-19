@@ -47,7 +47,7 @@
  */
 
 #include "ns3/applications-module.h"
-#include "ns3/config-store-module.h"
+#include "ns3/config-store.h"
 #include "ns3/core-module.h"
 #include "ns3/enum.h"
 #include "ns3/error-model.h"
@@ -220,12 +220,12 @@ TraceEveryDrop(std::string everyDropTrFileName)
 static void
 DroppingStateTracer(Ptr<OutputStreamWrapper> stream, bool oldVal, bool newVal)
 {
-    if (oldVal == false && newVal == true)
+    if (!oldVal && newVal)
     {
         NS_LOG_INFO("Entering the dropping state");
         *stream->GetStream() << Simulator::Now().GetSeconds() << " ";
     }
-    else if (oldVal == true && newVal == false)
+    else if (oldVal && !newVal)
     {
         NS_LOG_INFO("Leaving the dropping state");
         *stream->GetStream() << Simulator::Now().GetSeconds() << std::endl;
@@ -260,7 +260,7 @@ TraceDroppingState(std::string dropStateTrFileName)
  *
  * \param remoteAddress Remote address.
  * \param sender Sender node.
- * \param pktSize Pakcet size.
+ * \param pktSize Packet size.
  * \param stopTime Stop time.
  */
 void

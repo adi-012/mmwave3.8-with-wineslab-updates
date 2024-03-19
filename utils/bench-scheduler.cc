@@ -432,7 +432,7 @@ GetRandomStream(std::string filename)
         {
             if (*input >> value)
             {
-                uint64_t ns = (uint64_t)(value * 1000000000);
+                auto ns = (uint64_t)(value * 1000000000);
                 nsValues.push_back(ns);
             }
             else
@@ -479,10 +479,10 @@ main(int argc, char* argv[])
               "\n"
               "If no scheduler is specified the MapScheduler will be run.");
     cmd.AddValue("all", "use all schedulers", allSched);
-    cmd.AddValue("cal", "use CalendarSheduler", schedCal);
+    cmd.AddValue("cal", "use CalendarScheduler", schedCal);
     cmd.AddValue("calrev", "reverse ordering in the CalendarScheduler", calRev);
     cmd.AddValue("heap", "use HeapScheduler", schedHeap);
-    cmd.AddValue("list", "use ListSheduler", schedList);
+    cmd.AddValue("list", "use ListScheduler", schedList);
     cmd.AddValue("map", "use MapScheduler (default)", schedMap);
     cmd.AddValue("pri", "use PriorityQueue", schedPQ);
     cmd.AddValue("debug", "enable debugging output", g_debug);

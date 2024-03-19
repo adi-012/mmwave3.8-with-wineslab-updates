@@ -17,7 +17,7 @@
  * Author: Manuel Requena <manuel.requena@cttc.es>
  */
 
-#include "ns3/constant-spectrum-propagation-loss.h"
+#include "constant-spectrum-propagation-loss.h"
 
 #include "spectrum-signal-parameters.h"
 
@@ -84,8 +84,8 @@ ConstantSpectrumPropagationLossModel::DoCalcRxPowerSpectralDensity(
     NS_LOG_FUNCTION(this);
 
     Ptr<SpectrumValue> rxPsd = Copy<SpectrumValue>(params->psd);
-    Values::iterator vit = rxPsd->ValuesBegin();
-    Bands::const_iterator fit = rxPsd->ConstBandsBegin();
+    auto vit = rxPsd->ValuesBegin();
+    auto fit = rxPsd->ConstBandsBegin();
 
     while (vit != rxPsd->ValuesEnd())
     {
@@ -97,6 +97,12 @@ ConstantSpectrumPropagationLossModel::DoCalcRxPowerSpectralDensity(
         ++fit;
     }
     return rxPsd;
+}
+
+int64_t
+ConstantSpectrumPropagationLossModel::DoAssignStreams(int64_t stream)
+{
+    return 0;
 }
 
 } // namespace ns3

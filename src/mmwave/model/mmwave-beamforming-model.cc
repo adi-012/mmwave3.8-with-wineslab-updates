@@ -265,8 +265,8 @@ MmWaveSvdBeamforming::SetBeamformingVectorForDevice(Ptr<NetDevice> otherDevice,
         {
             NS_LOG_LOGIC("Channel has no MPCs");
 
-            uint64_t thisAntennaNumElements = m_antenna->GetNumberOfElements();
-            uint64_t otherAntennaNumElements = otherAntenna->GetNumberOfElements();
+            uint64_t thisAntennaNumElements = m_antenna->GetNumElems();
+            uint64_t otherAntennaNumElements = otherAntenna->GetNumElems();
             PhasedArrayModel::ComplexVector thisBf(thisAntennaNumElements);
             PhasedArrayModel::ComplexVector otherBf(otherAntennaNumElements);
 
@@ -287,12 +287,12 @@ MmWaveSvdBeamforming::SetBeamformingVectorForDevice(Ptr<NetDevice> otherDevice,
     // configure the antenna to use the new beamforming vector
     m_antenna->SetBeamformingVector(std::get<0>(bfVectors));
     NS_LOG_LOGIC("antenna " << m_antenna << " set BF vector"
-                            << " numAntennaElem " << m_antenna->GetNumberOfElements()
+                            << " numAntennaElem " << m_antenna->GetNumElems()
                             << " this device ID=" << m_device->GetNode()->GetId()
                             << " otherDevice ID=" << otherDevice->GetNode()->GetId());
     otherAntenna->SetBeamformingVector(std::get<1>(bfVectors));
     NS_LOG_LOGIC("antenna " << otherAntenna << " set BF vector"
-                            << " numAntennaElem " << otherAntenna->GetNumberOfElements()
+                            << " numAntennaElem " << otherAntenna->GetNumElems()
                             << " this device ID=" << otherDevice->GetNode()->GetId()
                             << " otherDevice ID=" << m_device->GetNode()->GetId());
 
@@ -521,7 +521,7 @@ MmWaveCodebookBeamforming::DoInitialize(void)
     cb->Initialize();
 
     NS_ASSERT_MSG(cb->GetCodebookSize() > 0, "Empty codebook");
-    NS_ASSERT_MSG(cb->GetCodeword(0).GetSize() == m_antenna->GetNumberOfElements(),
+    NS_ASSERT_MSG(cb->GetCodeword(0).GetSize() == m_antenna->GetNumElems(),
                   "Inappropriate codebook for the given PhasedArrayModel");
     m_antenna->AggregateObject(cb);
 

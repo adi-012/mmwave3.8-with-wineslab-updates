@@ -20,25 +20,24 @@
 #include "udp-socket-impl.h"
 
 #include "ipv4-end-point.h"
+#include "ipv4-header.h"
+#include "ipv4-packet-info-tag.h"
+#include "ipv4-route.h"
+#include "ipv4-routing-protocol.h"
+#include "ipv4.h"
 #include "ipv6-end-point.h"
+#include "ipv6-l3-protocol.h"
+#include "ipv6-packet-info-tag.h"
+#include "ipv6-route.h"
+#include "ipv6-routing-protocol.h"
+#include "ipv6.h"
 #include "udp-l4-protocol.h"
 
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
-#include "ns3/ipv4-header.h"
-#include "ns3/ipv4-packet-info-tag.h"
-#include "ns3/ipv4-route.h"
-#include "ns3/ipv4-routing-protocol.h"
-#include "ns3/ipv4.h"
-#include "ns3/ipv6-l3-protocol.h"
-#include "ns3/ipv6-packet-info-tag.h"
-#include "ns3/ipv6-route.h"
-#include "ns3/ipv6-routing-protocol.h"
-#include "ns3/ipv6.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/trace-source-accessor.h"
-#include "ns3/udp-socket-factory.h"
 
 #include <limits>
 
@@ -153,14 +152,14 @@ UdpSocketImpl::SetUdp(Ptr<UdpL4Protocol> udp)
     m_udp = udp;
 }
 
-enum Socket::SocketErrno
+Socket::SocketErrno
 UdpSocketImpl::GetErrno() const
 {
     NS_LOG_FUNCTION(this);
     return m_errno;
 }
 
-enum Socket::SocketType
+Socket::SocketType
 UdpSocketImpl::GetSocketType() const
 {
     return NS3_SOCK_DGRAM;
@@ -177,6 +176,10 @@ void
 UdpSocketImpl::Destroy()
 {
     NS_LOG_FUNCTION(this);
+    if (m_udp)
+    {
+        m_udp->RemoveSocket(this);
+    }
     m_endPoint = nullptr;
 }
 
@@ -184,6 +187,10 @@ void
 UdpSocketImpl::Destroy6()
 {
     NS_LOG_FUNCTION(this);
+    if (m_udp)
+    {
+        m_udp->RemoveSocket(this);
+    }
     m_endPoint6 = nullptr;
 }
 
@@ -193,13 +200,11 @@ UdpSocketImpl::DeallocateEndPoint()
 {
     if (m_endPoint != nullptr)
     {
-        m_endPoint->SetDestroyCallback(MakeNullCallback<void>());
         m_udp->DeAllocate(m_endPoint);
         m_endPoint = nullptr;
     }
     if (m_endPoint6 != nullptr)
     {
-        m_endPoint6->SetDestroyCallback(MakeNullCallback<void>());
         m_udp->DeAllocate(m_endPoint6);
         m_endPoint6 = nullptr;
     }
@@ -275,7 +280,6 @@ UdpSocketImpl::Bind(const Address& address)
         InetSocketAddress transport = InetSocketAddress::ConvertFrom(address);
         Ipv4Address ipv4 = transport.GetIpv4();
         uint16_t port = transport.GetPort();
-        SetIpTos(transport.GetTos());
         if (ipv4 == Ipv4Address::GetAny() && port == 0)
         {
             m_endPoint = m_udp->Allocate();
@@ -390,7 +394,7 @@ int
 UdpSocketImpl::Close()
 {
     NS_LOG_FUNCTION(this);
-    if (m_shutdownRecv == true && m_shutdownSend == true)
+    if (m_shutdownRecv && m_shutdownSend)
     {
         m_errno = Socket::ERROR_BADF;
         return -1;
@@ -406,16 +410,15 @@ int
 UdpSocketImpl::Connect(const Address& address)
 {
     NS_LOG_FUNCTION(this << address);
-    if (InetSocketAddress::IsMatchingType(address) == true)
+    if (InetSocketAddress::IsMatchingType(address))
     {
         InetSocketAddress transport = InetSocketAddress::ConvertFrom(address);
         m_defaultAddress = Address(transport.GetIpv4());
         m_defaultPort = transport.GetPort();
-        SetIpTos(transport.GetTos());
         m_connected = true;
         NotifyConnectionSucceeded();
     }
-    else if (Inet6SocketAddress::IsMatchingType(address) == true)
+    else if (Inet6SocketAddress::IsMatchingType(address))
     {
         Inet6SocketAddress transport = Inet6SocketAddress::ConvertFrom(address);
         m_defaultAddress = Address(transport.GetIpv6());
@@ -457,7 +460,7 @@ int
 UdpSocketImpl::DoSend(Ptr<Packet> p)
 {
     NS_LOG_FUNCTION(this << p);
-    if ((m_endPoint == nullptr) && (Ipv4Address::IsMatchingType(m_defaultAddress) == true))
+    if (m_endPoint == nullptr && Ipv4Address::IsMatchingType(m_defaultAddress))
     {
         if (Bind() == -1)
         {
@@ -466,7 +469,7 @@ UdpSocketImpl::DoSend(Ptr<Packet> p)
         }
         NS_ASSERT(m_endPoint != nullptr);
     }
-    else if ((m_endPoint6 == nullptr) && (Ipv6Address::IsMatchingType(m_defaultAddress) == true))
+    else if (m_endPoint6 == nullptr && Ipv6Address::IsMatchingType(m_defaultAddress))
     {
         if (Bind6() == -1)
         {
@@ -491,7 +494,7 @@ UdpSocketImpl::DoSend(Ptr<Packet> p)
     }
 
     m_errno = ERROR_AFNOSUPPORT;
-    return (-1);
+    return -1;
 }
 
 int
@@ -690,7 +693,7 @@ UdpSocketImpl::DoSendTo(Ptr<Packet> p, Ipv6Address dest, uint16_t port)
 
     if (dest.IsIpv4MappedAddress())
     {
-        return (DoSendTo(p, dest.GetIpv4MappedAddress(), port, 0));
+        return DoSendTo(p, dest.GetIpv4MappedAddress(), port, 0);
     }
     if (m_boundnetdevice)
     {
@@ -834,8 +837,7 @@ UdpSocketImpl::SendTo(Ptr<Packet> p, uint32_t flags, const Address& address)
         InetSocketAddress transport = InetSocketAddress::ConvertFrom(address);
         Ipv4Address ipv4 = transport.GetIpv4();
         uint16_t port = transport.GetPort();
-        uint8_t tos = transport.GetTos();
-        return DoSendTo(p, ipv4, port, tos);
+        return DoSendTo(p, ipv4, port, GetIpTos());
     }
     else if (Inet6SocketAddress::IsMatchingType(address))
     {
@@ -926,9 +928,7 @@ UdpSocketImpl::GetPeerName(Address& address) const
     if (Ipv4Address::IsMatchingType(m_defaultAddress))
     {
         Ipv4Address addr = Ipv4Address::ConvertFrom(m_defaultAddress);
-        InetSocketAddress inet(addr, m_defaultPort);
-        inet.SetTos(GetIpTos());
-        address = inet;
+        address = InetSocketAddress(addr, m_defaultPort);
     }
     else if (Ipv6Address::IsMatchingType(m_defaultAddress))
     {

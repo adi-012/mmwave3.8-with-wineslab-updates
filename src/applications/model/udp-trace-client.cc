@@ -48,7 +48,7 @@ NS_OBJECT_ENSURE_REGISTERED(UdpTraceClient);
 /**
  * \brief Default trace to send
  */
-struct UdpTraceClient::TraceEntry UdpTraceClient::g_defaultEntries[] = {
+UdpTraceClient::TraceEntry UdpTraceClient::g_defaultEntries[] = {
     {0, 534, 'I'},
     {40, 1542, 'P'},
     {120, 134, 'B'},
@@ -79,6 +79,12 @@ UdpTraceClient::GetTypeId()
                           UintegerValue(100),
                           MakeUintegerAccessor(&UdpTraceClient::m_peerPort),
                           MakeUintegerChecker<uint16_t>())
+            .AddAttribute("Tos",
+                          "The Type of Service used to send IPv4 packets. "
+                          "All 8 bits of the TOS byte are set (including ECN bits).",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&UdpTraceClient::m_tos),
+                          MakeUintegerChecker<uint8_t>())
             .AddAttribute("MaxPacketSize",
                           "The maximum size of a packet (including the SeqTsHeader, 12 bytes).",
                           UintegerValue(1024),
@@ -258,16 +264,17 @@ UdpTraceClient::StartApplication()
     {
         TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
         m_socket = Socket::CreateSocket(GetNode(), tid);
-        if (Ipv4Address::IsMatchingType(m_peerAddress) == true)
+        if (Ipv4Address::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind() == -1)
             {
                 NS_FATAL_ERROR("Failed to bind socket");
             }
+            m_socket->SetIpTos(m_tos); // Affects only IPv4 sockets.
             m_socket->Connect(
                 InetSocketAddress(Ipv4Address::ConvertFrom(m_peerAddress), m_peerPort));
         }
-        else if (Ipv6Address::IsMatchingType(m_peerAddress) == true)
+        else if (Ipv6Address::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind6() == -1)
             {
@@ -276,15 +283,16 @@ UdpTraceClient::StartApplication()
             m_socket->Connect(
                 Inet6SocketAddress(Ipv6Address::ConvertFrom(m_peerAddress), m_peerPort));
         }
-        else if (InetSocketAddress::IsMatchingType(m_peerAddress) == true)
+        else if (InetSocketAddress::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind() == -1)
             {
                 NS_FATAL_ERROR("Failed to bind socket");
             }
+            m_socket->SetIpTos(m_tos); // Affects only IPv4 sockets.
             m_socket->Connect(m_peerAddress);
         }
-        else if (Inet6SocketAddress::IsMatchingType(m_peerAddress) == true)
+        else if (Inet6SocketAddress::IsMatchingType(m_peerAddress))
         {
             if (m_socket->Bind6() == -1)
             {
@@ -329,11 +337,11 @@ UdpTraceClient::SendPacket(uint32_t size)
     p->AddHeader(seqTs);
 
     std::stringstream addressString;
-    if (Ipv4Address::IsMatchingType(m_peerAddress) == true)
+    if (Ipv4Address::IsMatchingType(m_peerAddress))
     {
         addressString << Ipv4Address::ConvertFrom(m_peerAddress);
     }
-    else if (Ipv6Address::IsMatchingType(m_peerAddress) == true)
+    else if (Ipv6Address::IsMatchingType(m_peerAddress))
     {
         addressString << Ipv6Address::ConvertFrom(m_peerAddress);
     }
@@ -362,7 +370,7 @@ UdpTraceClient::Send()
 
     bool cycled = false;
     Ptr<Packet> p;
-    struct TraceEntry* entry = &m_entries[m_currentEntry];
+    TraceEntry* entry = &m_entries[m_currentEntry];
     do
     {
         for (uint32_t i = 0; i < entry->packetSize / m_maxPacketSize; i++)

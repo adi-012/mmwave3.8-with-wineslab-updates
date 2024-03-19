@@ -32,9 +32,6 @@
 
 #include "tcp-westwood-plus.h"
 
-#include "rtt-estimator.h"
-#include "tcp-socket-base.h"
-
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
@@ -57,7 +54,7 @@ TcpWestwoodPlus::GetTypeId()
                 "FilterType",
                 "Use this to choose no filter or Tustin's approximation filter",
                 EnumValue(TcpWestwoodPlus::TUSTIN),
-                MakeEnumAccessor(&TcpWestwoodPlus::m_fType),
+                MakeEnumAccessor<FilterType>(&TcpWestwoodPlus::m_fType),
                 MakeEnumChecker(TcpWestwoodPlus::NONE, "None", TcpWestwoodPlus::TUSTIN, "Tustin"))
             .AddTraceSource("EstimatedBW",
                             "The estimated bandwidth",

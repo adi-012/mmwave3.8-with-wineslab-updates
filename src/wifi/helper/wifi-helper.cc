@@ -147,7 +147,7 @@ WifiPhyHelper::WifiPhyHelper(uint8_t nLinks)
     : m_pcapDlt(PcapHelper::DLT_IEEE802_11)
 {
     NS_ABORT_IF(nLinks == 0);
-    m_phy.resize(nLinks);
+    m_phys.resize(nLinks);
     m_errorRateModel.resize(nLinks);
     m_frameCaptureModel.resize(nLinks);
     m_preambleDetectionModel.resize(nLinks);
@@ -162,7 +162,7 @@ WifiPhyHelper::~WifiPhyHelper()
 void
 WifiPhyHelper::Set(std::string name, const AttributeValue& v)
 {
-    for (auto& phy : m_phy)
+    for (auto& phy : m_phys)
     {
         phy.Set(name, v);
     }
@@ -171,7 +171,7 @@ WifiPhyHelper::Set(std::string name, const AttributeValue& v)
 void
 WifiPhyHelper::Set(uint8_t linkId, std::string name, const AttributeValue& v)
 {
-    m_phy.at(linkId).Set(name, v);
+    m_phys.at(linkId).Set(name, v);
 }
 
 void
@@ -377,7 +377,7 @@ WifiPhyHelper::GetRadiotapHeader(RadiotapHeader& header,
         packet->RemoveHeader(hdr);
         extractedLength = hdr.GetLength();
         packet = packet->CreateFragment(0, static_cast<uint32_t>(extractedLength));
-        if (aMpdu.type == LAST_MPDU_IN_AGGREGATE || (hdr.GetEof() == true && hdr.GetLength() > 0))
+        if (aMpdu.type == LAST_MPDU_IN_AGGREGATE || (hdr.GetEof() && hdr.GetLength() > 0))
         {
             ampduStatusFlags |= RadiotapHeader::A_MPDU_STATUS_LAST;
         }
@@ -759,7 +759,7 @@ WifiHelper::Install(const WifiPhyHelper& phyHelper,
                     NodeContainer::Iterator last) const
 {
     NetDeviceContainer devices;
-    for (NodeContainer::Iterator i = first; i != last; ++i)
+    for (auto i = first; i != last; ++i)
     {
         Ptr<Node> node = *i;
         Ptr<WifiNetDevice> device = CreateObject<WifiNetDevice>();
@@ -890,21 +890,21 @@ WifiHelper::EnableLogComponents()
     LogComponentEnable("AparfWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("ArfWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("BlockAckAgreement", LOG_LEVEL_ALL);
-    LogComponentEnable("RecipientBlockAckAgreement", LOG_LEVEL_ALL);
     LogComponentEnable("BlockAckManager", LOG_LEVEL_ALL);
     LogComponentEnable("CaraWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("ChannelAccessManager", LOG_LEVEL_ALL);
     LogComponentEnable("ConstantObssPdAlgorithm", LOG_LEVEL_ALL);
     LogComponentEnable("ConstantRateWifiManager", LOG_LEVEL_ALL);
-    LogComponentEnable("ChannelAccessManager", LOG_LEVEL_ALL);
+    LogComponentEnable("DefaultEmlsrManager", LOG_LEVEL_ALL);
     LogComponentEnable("DsssErrorRateModel", LOG_LEVEL_ALL);
     LogComponentEnable("DsssPhy", LOG_LEVEL_ALL);
     LogComponentEnable("DsssPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("EhtFrameExchangeManager", LOG_LEVEL_ALL);
-    LogComponentEnable("ErpOfdmPhy", LOG_LEVEL_ALL);
-    LogComponentEnable("ErpOfdmPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("EhtPhy", LOG_LEVEL_ALL);
     LogComponentEnable("EhtPpdu", LOG_LEVEL_ALL);
+    LogComponentEnable("EmlsrManager", LOG_LEVEL_ALL);
+    LogComponentEnable("ErpOfdmPhy", LOG_LEVEL_ALL);
+    LogComponentEnable("ErpOfdmPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("FrameExchangeManager", LOG_LEVEL_ALL);
     LogComponentEnable("HeConfiguration", LOG_LEVEL_ALL);
     LogComponentEnable("HeFrameExchangeManager", LOG_LEVEL_ALL);
@@ -926,15 +926,16 @@ WifiHelper::EnableLogComponents()
     LogComponentEnable("NistErrorRateModel", LOG_LEVEL_ALL);
     LogComponentEnable("ObssPdAlgorithm", LOG_LEVEL_ALL);
     LogComponentEnable("OfdmPhy", LOG_LEVEL_ALL);
+    LogComponentEnable("OfdmPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("OnoeWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("OriginatorBlockAckAgreement", LOG_LEVEL_ALL);
-    LogComponentEnable("OfdmPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("ParfWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("PhyEntity", LOG_LEVEL_ALL);
     LogComponentEnable("QosFrameExchangeManager", LOG_LEVEL_ALL);
     LogComponentEnable("QosTxop", LOG_LEVEL_ALL);
-    LogComponentEnable("RraaWifiManager", LOG_LEVEL_ALL);
+    LogComponentEnable("RecipientBlockAckAgreement", LOG_LEVEL_ALL);
     LogComponentEnable("RrMultiUserScheduler", LOG_LEVEL_ALL);
+    LogComponentEnable("RraaWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("RrpaaWifiManager", LOG_LEVEL_ALL);
     LogComponentEnable("SimpleFrameCaptureModel", LOG_LEVEL_ALL);
     LogComponentEnable("SpectrumWifiPhy", LOG_LEVEL_ALL);
@@ -958,8 +959,8 @@ WifiHelper::EnableLogComponents()
     LogComponentEnable("WifiMpdu", LOG_LEVEL_ALL);
     LogComponentEnable("WifiNetDevice", LOG_LEVEL_ALL);
     LogComponentEnable("WifiPhyStateHelper", LOG_LEVEL_ALL);
-    LogComponentEnable("WifiPhy", LOG_LEVEL_ALL);
     LogComponentEnable("WifiPhyOperatingChannel", LOG_LEVEL_ALL);
+    LogComponentEnable("WifiPhy", LOG_LEVEL_ALL);
     LogComponentEnable("WifiPpdu", LOG_LEVEL_ALL);
     LogComponentEnable("WifiProtectionManager", LOG_LEVEL_ALL);
     LogComponentEnable("WifiPsdu", LOG_LEVEL_ALL);
@@ -974,6 +975,11 @@ WifiHelper::EnableLogComponents()
     LogComponentEnable("YansWifiChannel", LOG_LEVEL_ALL);
     LogComponentEnable("YansWifiPhy", LOG_LEVEL_ALL);
 
+    LogComponentEnable("Athstats", LOG_LEVEL_ALL);
+    LogComponentEnable("WifiHelper", LOG_LEVEL_ALL);
+    LogComponentEnable("SpectrumWifiHelper", LOG_LEVEL_ALL);
+    LogComponentEnable("YansWifiHelper", LOG_LEVEL_ALL);
+
     // From Spectrum
     LogComponentEnable("WifiSpectrumValueHelper", LOG_LEVEL_ALL);
 }
@@ -983,43 +989,48 @@ WifiHelper::AssignStreams(NetDeviceContainer c, int64_t stream)
 {
     int64_t currentStream = stream;
     Ptr<NetDevice> netDevice;
-    for (NetDeviceContainer::Iterator i = c.Begin(); i != c.End(); ++i)
+    for (auto i = c.Begin(); i != c.End(); ++i)
     {
         netDevice = (*i);
-        Ptr<WifiNetDevice> wifi = DynamicCast<WifiNetDevice>(netDevice);
-        if (wifi)
+        if (auto wifi = DynamicCast<WifiNetDevice>(netDevice))
         {
             // Handle any random numbers in the PHY objects.
-            currentStream += wifi->GetPhy()->AssignStreams(currentStream);
+            for (auto& phy : wifi->GetPhys())
+            {
+                currentStream += phy->AssignStreams(currentStream);
+            }
 
             // Handle any random numbers in the station managers.
-            currentStream += wifi->GetRemoteStationManager()->AssignStreams(currentStream);
+            for (auto& manager : wifi->GetRemoteStationManagers())
+            {
+                currentStream += manager->AssignStreams(currentStream);
+            }
 
             // Handle any random numbers in the MAC objects.
-            Ptr<WifiMac> mac = wifi->GetMac();
+            auto mac = wifi->GetMac();
             PointerValue ptr;
             if (!mac->GetQosSupported())
             {
                 mac->GetAttribute("Txop", ptr);
-                Ptr<Txop> txop = ptr.Get<Txop>();
+                auto txop = ptr.Get<Txop>();
                 currentStream += txop->AssignStreams(currentStream);
             }
             else
             {
                 mac->GetAttribute("VO_Txop", ptr);
-                Ptr<QosTxop> vo_txop = ptr.Get<QosTxop>();
+                auto vo_txop = ptr.Get<QosTxop>();
                 currentStream += vo_txop->AssignStreams(currentStream);
 
                 mac->GetAttribute("VI_Txop", ptr);
-                Ptr<QosTxop> vi_txop = ptr.Get<QosTxop>();
+                auto vi_txop = ptr.Get<QosTxop>();
                 currentStream += vi_txop->AssignStreams(currentStream);
 
                 mac->GetAttribute("BE_Txop", ptr);
-                Ptr<QosTxop> be_txop = ptr.Get<QosTxop>();
+                auto be_txop = ptr.Get<QosTxop>();
                 currentStream += be_txop->AssignStreams(currentStream);
 
                 mac->GetAttribute("BK_Txop", ptr);
-                Ptr<QosTxop> bk_txop = ptr.Get<QosTxop>();
+                auto bk_txop = ptr.Get<QosTxop>();
                 currentStream += bk_txop->AssignStreams(currentStream);
             }
 

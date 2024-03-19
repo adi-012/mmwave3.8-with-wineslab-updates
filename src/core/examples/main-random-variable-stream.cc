@@ -99,7 +99,7 @@ Histogram(Ptr<RandomVariableStream> rndvar,
         data.SetStyle(Gnuplot2dDataset::IMPULSES);
     }
 
-    for (histogram_maptype::const_iterator hi = histogram.begin(); hi != histogram.end(); ++hi)
+    for (auto hi = histogram.begin(); hi != histogram.end(); ++hi)
     {
         data.Add(hi->first, (double)hi->second / (double)probes / precision);
     }
@@ -550,6 +550,37 @@ main(int argc, char* argv[])
             Histogram(x7, probes, precision, "ErlangRandomVariable k=2 {/Symbol l}=5.0"));
 
         plot.AddDataset(Gnuplot2dFunction("Erlang(x, 2, 5.0)", "ErlangDist(x, 2, 5.0)"));
+
+        gnuplots.AddPlot(plot);
+        std::cout << "done" << std::endl;
+    }
+
+    {
+        std::cout << "BinomialRandomVariable......." << std::flush;
+        Gnuplot plot;
+        plot.SetTitle("BinomialRandomVariable");
+        plot.AppendExtra("set yrange [0:10]");
+
+        auto x = CreateObject<BinomialRandomVariable>();
+        x->SetAttribute("Trials", IntegerValue(10));
+        x->SetAttribute("Probability", DoubleValue(0.5));
+
+        plot.AddDataset(Histogram(x, probes, precision, "BinomialRandomVariable n=10 p=0.5"));
+
+        gnuplots.AddPlot(plot);
+        std::cout << "done" << std::endl;
+    }
+
+    {
+        std::cout << "BernoulliRandomVariable......." << std::flush;
+        Gnuplot plot;
+        plot.SetTitle("BernoulliRandomVariable");
+        plot.AppendExtra("set yrange [0:1]");
+
+        auto x = CreateObject<BernoulliRandomVariable>();
+        x->SetAttribute("Probability", DoubleValue(0.5));
+
+        plot.AddDataset(Histogram(x, probes, precision, "BernoulliRandomVariable p=0.5"));
 
         gnuplots.AddPlot(plot);
         std::cout << "done" << std::endl;

@@ -1018,7 +1018,7 @@ LteRlcAm::DoNotifyTxOpportunity(LteMacSapUser::TxOpportunityParameters txOpParam
     // LL HO tricky: store the complete version of the LAST incomplete Rlc SDU for forwarding to
     // target eNB in lossless HO. This will reduce the work of
     // reassemling the incomplete SDU later.
-    if (entireSdu != NULL)
+    if (entireSdu)
     {
         m_segmented_rlcsdu = entireSdu;
         NS_LOG_DEBUG("entireSdu = " << m_segmented_rlcsdu->GetSize() << " SEQ = " << m_vtS);

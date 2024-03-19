@@ -21,13 +21,14 @@
 #ifndef THREE_GPP_HTTP_SERVER_H
 #define THREE_GPP_HTTP_SERVER_H
 
+#include "three-gpp-http-header.h"
+
 #include <ns3/address.h>
 #include <ns3/application.h>
 #include <ns3/event-id.h>
 #include <ns3/nstime.h>
 #include <ns3/ptr.h>
 #include <ns3/simple-ref-count.h>
-#include <ns3/three-gpp-http-header.h>
 #include <ns3/traced-callback.h>
 
 #include <map>
@@ -271,6 +272,8 @@ class ThreeGppHttpServer : public Application
     Address m_localAddress;
     /// The `LocalPort` attribute.
     uint16_t m_localPort;
+    /// The `Tos` attribute.
+    uint8_t m_tos;
     /// The `Mtu` attribute.
     uint32_t m_mtuSize;
 

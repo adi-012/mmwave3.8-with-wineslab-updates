@@ -74,16 +74,17 @@ TvSpectrumTransmitter::GetTypeId()
             .SetParent<SpectrumPhy>()
             .SetGroupName("Spectrum")
             .AddConstructor<TvSpectrumTransmitter>()
-            .AddAttribute("TvType",
-                          "The type of TV transmitter/modulation to be used.",
-                          EnumValue(TvSpectrumTransmitter::TVTYPE_8VSB),
-                          MakeEnumAccessor(&TvSpectrumTransmitter::m_tvType),
-                          MakeEnumChecker(TvSpectrumTransmitter::TVTYPE_8VSB,
-                                          "8vsb",
-                                          TvSpectrumTransmitter::TVTYPE_COFDM,
-                                          "cofdm",
-                                          TvSpectrumTransmitter::TVTYPE_ANALOG,
-                                          "analog"))
+            .AddAttribute(
+                "TvType",
+                "The type of TV transmitter/modulation to be used.",
+                EnumValue(TvSpectrumTransmitter::TVTYPE_8VSB),
+                MakeEnumAccessor<TvSpectrumTransmitter::TvType>(&TvSpectrumTransmitter::m_tvType),
+                MakeEnumChecker(TvSpectrumTransmitter::TVTYPE_8VSB,
+                                "8vsb",
+                                TvSpectrumTransmitter::TVTYPE_COFDM,
+                                "cofdm",
+                                TvSpectrumTransmitter::TVTYPE_ANALOG,
+                                "analog"))
             .AddAttribute("StartFrequency",
                           "The lower end frequency (in Hz) of the TV transmitter's "
                           "signal. Must be greater than or equal to 0.",
@@ -246,7 +247,7 @@ TvSpectrumTransmitter::CreateTvPsd()
     NS_ASSERT(m_channelBandwidth != 0);
     Ptr<SpectrumModel> model;
     TvSpectrumModelId key(m_startFrequency, m_channelBandwidth);
-    std::map<TvSpectrumModelId, Ptr<SpectrumModel>>::iterator iter = g_tvSpectrumModelMap.find(key);
+    auto iter = g_tvSpectrumModelMap.find(key);
     if (iter != g_tvSpectrumModelMap.end())
     {
         model = iter->second; // set SpectrumModel to previously created one

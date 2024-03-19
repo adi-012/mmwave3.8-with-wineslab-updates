@@ -20,8 +20,9 @@
 #ifndef CSMA_NET_DEVICE_H
 #define CSMA_NET_DEVICE_H
 
+#include "backoff.h"
+
 #include "ns3/address.h"
-#include "ns3/backoff.h"
 #include "ns3/callback.h"
 #include "ns3/data-rate.h"
 #include "ns3/mac48-address.h"
@@ -171,7 +172,7 @@ class CsmaNetDevice : public NetDevice
      * \param p a reference to the received packet
      * \param sender the CsmaNetDevice that transmitted the packet in the first place
      */
-    void Receive(Ptr<Packet> p, Ptr<CsmaNetDevice> sender);
+    void Receive(Ptr<const Packet> p, Ptr<CsmaNetDevice> sender);
 
     /**
      * Is the send side of the network device enabled?

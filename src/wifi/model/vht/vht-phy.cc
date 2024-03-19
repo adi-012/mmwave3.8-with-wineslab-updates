@@ -31,6 +31,9 @@
 #include "ns3/wifi-psdu.h"
 #include "ns3/wifi-utils.h"
 
+#undef NS_LOG_APPEND_CONTEXT
+#define NS_LOG_APPEND_CONTEXT WIFI_PHY_NS_LOG_APPEND_CONTEXT(m_wifiPhy)
+
 namespace ns3
 {
 
@@ -250,10 +253,8 @@ VhtPhy::BuildPpdu(const WifiConstPsduMap& psdus, const WifiTxVector& txVector, T
     NS_LOG_FUNCTION(this << psdus << txVector << ppduDuration);
     return Create<VhtPpdu>(psdus.begin()->second,
                            txVector,
-                           m_wifiPhy->GetOperatingChannel().GetPrimaryChannelCenterFrequency(
-                               txVector.GetChannelWidth()),
+                           m_wifiPhy->GetOperatingChannel(),
                            ppduDuration,
-                           m_wifiPhy->GetPhyBand(),
                            ObtainNextUid(txVector));
 }
 
@@ -316,7 +317,7 @@ PhyEntity::PhyFieldRxStatus
 VhtPhy::ProcessSig(Ptr<Event> event, PhyFieldRxStatus status, WifiPpduField field)
 {
     NS_LOG_FUNCTION(this << *event << status << field);
-    NS_ASSERT(event->GetTxVector().GetPreambleType() >= WIFI_PREAMBLE_VHT_SU);
+    NS_ASSERT(event->GetPpdu()->GetTxVector().GetPreambleType() >= WIFI_PREAMBLE_VHT_SU);
     // TODO see if something should be done here once MU-MIMO is supported
     return status; // nothing special for VHT
 }
@@ -371,7 +372,7 @@ VhtPhy::GetVhtMcs(uint8_t index)
     {                                                                                              \
         static WifiMode mcs = CreateVhtMcs(x);                                                     \
         return mcs;                                                                                \
-    };
+    }
 
 GET_VHT_MCS(0)
 GET_VHT_MCS(1)
@@ -585,8 +586,6 @@ VhtPhy::GetCcaThreshold(const Ptr<const WifiPpdu> ppdu, WifiChannelListType chan
 PhyEntity::CcaIndication
 VhtPhy::GetCcaIndication(const Ptr<const WifiPpdu> ppdu)
 {
-    NS_LOG_FUNCTION(this);
-
     if (m_wifiPhy->GetChannelWidth() < 80)
     {
         return HtPhy::GetCcaIndication(ppdu);

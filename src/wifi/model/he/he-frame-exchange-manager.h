@@ -52,6 +52,13 @@ typedef std::unordered_map<uint16_t /* staId */, Ptr<const WifiPsdu> /* PSDU */>
 bool IsTrigger(const WifiPsduMap& psduMap);
 
 /**
+ * \param psduMap a PSDU map
+ * \return true if the given PSDU map contains a single PSDU including a single MPDU
+ *         that carries a Trigger Frame
+ */
+bool IsTrigger(const WifiConstPsduMap& psduMap);
+
+/**
  * \ingroup wifi
  *
  * HeFrameExchangeManager handles the frame exchange sequences
@@ -68,10 +75,8 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     HeFrameExchangeManager();
     ~HeFrameExchangeManager() override;
 
-    uint16_t GetSupportedBaBufferSize() const override;
     bool StartFrameExchange(Ptr<QosTxop> edca, Time availableTime, bool initialFrame) override;
     void SetWifiMac(const Ptr<WifiMac> mac) override;
-    void SetWifiPhy(const Ptr<WifiPhy> phy) override;
     void CalculateAcknowledgmentTime(WifiAcknowledgment* acknowledgment) const override;
     void CalculateProtectionTime(WifiProtection* protection) const override;
     void SetTxopHolder(Ptr<const WifiPsdu> psdu, const WifiTxVector& txVector) override;
@@ -137,7 +142,7 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
   protected:
     void DoDispose() override;
     void Reset() override;
-
+    void RxStartIndication(WifiTxVector txVector, Time psduDuration) override;
     void ReceiveMpdu(Ptr<const WifiMpdu> mpdu,
                      RxSignalInfo rxSignalInfo,
                      const WifiTxVector& txVector,
@@ -150,12 +155,14 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
     Time GetTxDuration(uint32_t ppduPayloadSize,
                        Mac48Address receiver,
                        const WifiTxParameters& txParams) const override;
-    bool SendMpduFromBaManager(Ptr<WifiMpdu> mpdu, Time availableTime, bool initialFrame) override;
     void NormalAckTimeout(Ptr<WifiMpdu> mpdu, const WifiTxVector& txVector) override;
     void BlockAckTimeout(Ptr<WifiPsdu> psdu, const WifiTxVector& txVector) override;
     void CtsTimeout(Ptr<WifiMpdu> rts, const WifiTxVector& txVector) override;
     void UpdateNav(Ptr<const WifiPsdu> psdu, const WifiTxVector& txVector) override;
     void NavResetTimeout() override;
+    void StartProtection(const WifiTxParameters& txParams) override;
+    void ProtectionCompleted() override;
+    void TransmissionSucceeded() override;
 
     /**
      * Clear the TXOP holder if the intra-BSS NAV counted down to zero (includes the case
@@ -184,11 +191,18 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
                                     Time response) const;
 
     /**
+     * Record the stations being solicited by an MU-RTS TF.
+     *
+     * \param txParams the TX parameters for the data frame protected by the MU-RTS TF.
+     */
+    void RecordSentMuRtsTo(const WifiTxParameters& txParams);
+
+    /**
      * Send an MU-RTS to begin an MU-RTS/CTS frame exchange protecting an MU PPDU.
      *
      * \param txParams the TX parameters for the data frame
      */
-    void SendMuRts(const WifiTxParameters& txParams);
+    virtual void SendMuRts(const WifiTxParameters& txParams);
 
     /**
      * Called when no CTS frame is received after an MU-RTS.
@@ -240,7 +254,7 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
      * \param psduMap the map of PSDUs to transmit
      * \param txVector the TXVECTOR used to transmit the MU PPDU
      */
-    void ForwardPsduMapDown(WifiConstPsduMap psduMap, WifiTxVector& txVector);
+    virtual void ForwardPsduMapDown(WifiConstPsduMap psduMap, WifiTxVector& txVector);
 
     /**
      * Take the necessary actions after that some BlockAck frames are missing
@@ -248,12 +262,9 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
      * expected BlockAck frames were received.
      *
      * \param psduMap a pointer to PSDU map transmitted in a DL MU PPDU
-     * \param staMissedBlockAckFrom set of stations we missed a BlockAck frame from
      * \param nSolicitedStations the number of stations solicited to send a TB PPDU
      */
-    virtual void BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap,
-                                          const std::set<Mac48Address>* staMissedBlockAckFrom,
-                                          std::size_t nSolicitedStations);
+    virtual void BlockAcksInTbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations);
 
     /**
      * Take the necessary actions after that some TB PPDUs are missing in
@@ -261,12 +272,9 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
      * expected TB PPDUs were received.
      *
      * \param psduMap a pointer to PSDU map transmitted in a DL MU PPDU
-     * \param staMissedTbPpduFrom set of stations we missed a TB PPDU from
      * \param nSolicitedStations the number of stations solicited to send a TB PPDU
      */
-    virtual void TbPpduTimeout(WifiPsduMap* psduMap,
-                               const std::set<Mac48Address>* staMissedTbPpduFrom,
-                               std::size_t nSolicitedStations);
+    virtual void TbPpduTimeout(WifiPsduMap* psduMap, std::size_t nSolicitedStations);
 
     /**
      * Take the necessary actions after that a Block Ack is missing after a
@@ -365,14 +373,13 @@ class HeFrameExchangeManager : public VhtFrameExchangeManager
                              Time durationId,
                              double snr);
 
-    WifiPsduMap m_psduMap;                        //!< the A-MPDU being transmitted
-    WifiTxParameters m_txParams;                  //!< the TX parameters for the current PPDU
-    Ptr<MultiUserScheduler> m_muScheduler;        //!< Multi-user Scheduler (HE APs only)
-    Ptr<WifiMpdu> m_triggerFrame;                 //!< Trigger Frame being sent
-    std::set<Mac48Address> m_staExpectTbPpduFrom; //!< set of stations expected to send a TB PPDU
-    EventId m_multiStaBaEvent;                    //!< Sending a Multi-STA BlockAck event
-    MuSnrTag m_muSnrTag;                          //!< Tag to attach to Multi-STA BlockAck frames
-    bool m_triggerFrameInAmpdu; //!< True if the received A-MPDU contains an MU-BAR
+    WifiPsduMap m_psduMap;                 //!< the A-MPDU being transmitted
+    WifiTxParameters m_txParams;           //!< the TX parameters for the current PPDU
+    Ptr<MultiUserScheduler> m_muScheduler; //!< Multi-user Scheduler (HE APs only)
+    Ptr<WifiMpdu> m_triggerFrame;          //!< Trigger Frame being sent
+    EventId m_multiStaBaEvent;             //!< Sending a Multi-STA BlockAck event
+    MuSnrTag m_muSnrTag;                   //!< Tag to attach to Multi-STA BlockAck frames
+    bool m_triggerFrameInAmpdu;            //!< True if the received A-MPDU contains an MU-BAR
 };
 
 } // namespace ns3

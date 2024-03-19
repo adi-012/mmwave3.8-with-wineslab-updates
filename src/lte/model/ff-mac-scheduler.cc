@@ -56,7 +56,7 @@ FfMacScheduler::GetTypeId(void)
                             .AddAttribute("UlCqiFilter",
                                           "The filter to apply on UL CQIs received",
                                           EnumValue(FfMacScheduler::SRS_UL_CQI),
-                                          MakeEnumAccessor(&FfMacScheduler::m_ulCqiFilter),
+                                          MakeEnumAccessor<UlCqiFilter_t>(&FfMacScheduler::m_ulCqiFilter),
                                           MakeEnumChecker(FfMacScheduler::SRS_UL_CQI,
                                                           "SRS_UL_CQI",
                                                           FfMacScheduler::PUSCH_UL_CQI,

@@ -232,7 +232,7 @@ CtrlBAckRequestHeader::MustSendHtImmediateAck() const
 uint8_t
 CtrlBAckRequestHeader::GetTidInfo() const
 {
-    uint8_t tid = static_cast<uint8_t>(m_tidInfo);
+    auto tid = static_cast<uint8_t>(m_tidInfo);
     return tid;
 }
 
@@ -458,10 +458,12 @@ CtrlBAckResponseHeader::SetType(BlockAckType type)
 
     for (auto& bitmapLen : m_baType.m_bitmapLen)
     {
-        m_baInfo.push_back({.m_aidTidInfo = 0,
-                            .m_startingSeq = 0,
-                            .m_bitmap = std::vector<uint8_t>(bitmapLen, 0),
-                            .m_ra = Mac48Address()});
+        BaInfoInstance baInfoInstance{.m_aidTidInfo = 0,
+                                      .m_startingSeq = 0,
+                                      .m_bitmap = std::vector<uint8_t>(bitmapLen, 0),
+                                      .m_ra = Mac48Address()};
+
+        m_baInfo.emplace_back(baInfoInstance);
     }
 }
 
@@ -717,14 +719,27 @@ CtrlBAckResponseHeader::GetStartingSequenceControl(std::size_t index) const
 
     uint16_t ret = (m_baInfo[index].m_startingSeq << 4) & 0xfff0;
 
-    // The Fragment Number subfield encodes the length of the bitmap for
-    // Compressed and Multi-STA variants (see sections 9.3.1.9.3 and 9.3.1.9.7
-    // of 802.11ax Draft 3.0). Note that Fragmentation Level 3 is not supported.
+    // The Fragment Number subfield encodes the length of the bitmap for Compressed and Multi-STA
+    // variants (see sections 9.3.1.8.2 and 9.3.1.8.7 of 802.11ax-2021 and 802.11be Draft 4.0).
+    // Note that Fragmentation Level 3 is not supported.
     if (m_baType.m_variant == BlockAckType::COMPRESSED)
     {
-        if (m_baType.m_bitmapLen[0] == 32)
+        switch (m_baType.m_bitmapLen[0])
         {
+        case 8:
+            // do nothing
+            break;
+        case 32:
             ret |= 0x0004;
+            break;
+        case 64:
+            ret |= 0x0008;
+            break;
+        case 128:
+            ret |= 0x000a;
+            break;
+        default:
+            NS_ABORT_MSG("Unsupported bitmap length: " << +m_baType.m_bitmapLen[0] << " bytes");
         }
     }
     else if (m_baType.m_variant == BlockAckType::MULTI_STA)
@@ -733,17 +748,28 @@ CtrlBAckResponseHeader::GetStartingSequenceControl(std::size_t index) const
         NS_ASSERT_MSG(!m_baInfo[index].m_bitmap.empty(),
                       "This Per AID TID Info subfield has no Starting Sequence Control subfield");
 
-        if (m_baType.m_bitmapLen[index] == 16)
+        switch (m_baType.m_bitmapLen[index])
         {
+        case 8:
+            // do nothing
+            break;
+        case 16:
             ret |= 0x0002;
-        }
-        else if (m_baType.m_bitmapLen[index] == 32)
-        {
+            break;
+        case 32:
             ret |= 0x0004;
-        }
-        else if (m_baType.m_bitmapLen[index] == 4)
-        {
+            break;
+        case 4:
             ret |= 0x0006;
+            break;
+        case 64:
+            ret |= 0x0008;
+            break;
+        case 128:
+            ret |= 0x000a;
+            break;
+        default:
+            NS_ABORT_MSG("Unsupported bitmap length: " << +m_baType.m_bitmapLen[index] << " bytes");
         }
     }
     return ret;
@@ -756,54 +782,66 @@ CtrlBAckResponseHeader::SetStartingSequenceControl(uint16_t seqControl, std::siz
                   "index can only be non null for Multi-STA Block Ack");
     NS_ASSERT(index < m_baInfo.size());
 
-    // The Fragment Number subfield encodes the length of the bitmap for
-    // Compressed and Multi-STA variants (see sections 9.3.1.9.3 and 9.3.1.9.7
-    // of 802.11ax Draft 3.0). Note that Fragmentation Level 3 is not supported.
+    // The Fragment Number subfield encodes the length of the bitmap for Compressed and Multi-STA
+    // variants (see sections 9.3.1.8.2 and 9.3.1.8.7 of 802.11ax-2021 and 802.11be Draft 4.0).
+    // Note that Fragmentation Level 3 is not supported.
     if (m_baType.m_variant == BlockAckType::COMPRESSED)
     {
-        if ((seqControl & 0x0001) == 1)
+        uint16_t fragNumber = seqControl & 0x000f;
+
+        if ((fragNumber & 0x0001) == 1)
         {
             NS_FATAL_ERROR("Fragmentation Level 3 unsupported");
         }
-        if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 0)
+        switch (fragNumber)
         {
+        case 0:
             SetType({BlockAckType::COMPRESSED, {8}});
-        }
-        else if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 2)
-        {
+            break;
+        case 4:
             SetType({BlockAckType::COMPRESSED, {32}});
-        }
-        else
-        {
-            NS_FATAL_ERROR("Reserved configurations");
+            break;
+        case 8:
+            SetType({BlockAckType::COMPRESSED, {64}});
+            break;
+        case 10:
+            SetType({BlockAckType::COMPRESSED, {128}});
+            break;
+        default:
+            NS_ABORT_MSG("Unsupported fragment number: " << fragNumber);
         }
     }
     else if (m_baType.m_variant == BlockAckType::MULTI_STA)
     {
-        if ((seqControl & 0x0001) == 1)
+        uint16_t fragNumber = seqControl & 0x000f;
+
+        if ((fragNumber & 0x0001) == 1)
         {
             NS_FATAL_ERROR("Fragmentation Level 3 unsupported");
         }
         uint8_t bitmapLen = 0;
-        if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 0)
+        switch (fragNumber)
         {
+        case 0:
             bitmapLen = 8;
-        }
-        else if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 1)
-        {
+            break;
+        case 2:
             bitmapLen = 16;
-        }
-        else if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 2)
-        {
+            break;
+        case 4:
             bitmapLen = 32;
-        }
-        else if (((seqControl >> 3) & 0x0001) == 0 && ((seqControl >> 1) & 0x0003) == 3)
-        {
+            break;
+        case 6:
             bitmapLen = 4;
-        }
-        else
-        {
-            NS_FATAL_ERROR("Reserved configurations");
+            break;
+        case 8:
+            bitmapLen = 64;
+            break;
+        case 10:
+            bitmapLen = 128;
+            break;
+        default:
+            NS_ABORT_MSG("Unsupported fragment number: " << fragNumber);
         }
         m_baType.m_bitmapLen[index] = bitmapLen;
         m_baInfo[index].m_bitmap.assign(bitmapLen, 0);
@@ -1449,7 +1487,8 @@ CtrlTriggerUserInfoField::GetUlFecCodingType() const
 void
 CtrlTriggerUserInfoField::SetUlMcs(uint8_t mcs)
 {
-    NS_ABORT_MSG_IF(mcs > 11, "Invalid MCS index");
+    uint8_t maxMcs = m_variant == TriggerFrameVariant::EHT ? 13 : 11;
+    NS_ABORT_MSG_IF(mcs > maxMcs, "Invalid MCS index");
     m_ulMcs = mcs;
 }
 
@@ -1630,7 +1669,8 @@ CtrlTriggerHeader::CtrlTriggerHeader()
       m_ulBandwidth(0),
       m_giAndLtfType(0),
       m_apTxPower(0),
-      m_ulSpatialReuse(0)
+      m_ulSpatialReuse(0),
+      m_padding(0)
 {
 }
 
@@ -1697,6 +1737,7 @@ CtrlTriggerHeader::operator=(const CtrlTriggerHeader& trigger)
     m_giAndLtfType = trigger.m_giAndLtfType;
     m_apTxPower = trigger.m_apTxPower;
     m_ulSpatialReuse = trigger.m_ulSpatialReuse;
+    m_padding = trigger.m_padding;
     m_userInfoFields.clear();
     m_userInfoFields = trigger.m_userInfoFields;
     return *this;
@@ -1761,7 +1802,7 @@ CtrlTriggerHeader::GetSerializedSize() const
         size += ui.GetSerializedSize();
     }
 
-    size += 2; // Padding field
+    size += m_padding;
 
     return size;
 }
@@ -1800,7 +1841,10 @@ CtrlTriggerHeader::Serialize(Buffer::Iterator start) const
         i = ui.Serialize(i);
     }
 
-    i.WriteHtolsbU16(0xffff); // Padding field, used as delimiter
+    for (std::size_t count = 0; count < m_padding; count++)
+    {
+        i.WriteU8(0xff); // Padding field
+    }
 }
 
 uint32_t
@@ -1821,6 +1865,7 @@ CtrlTriggerHeader::Deserialize(Buffer::Iterator start)
     uint8_t bit54and55 = (commonInfo >> 54) & 0x03;
     m_variant = bit54and55 == 3 ? TriggerFrameVariant::HE : TriggerFrameVariant::EHT;
     m_userInfoFields.clear();
+    m_padding = 0;
 
     NS_ABORT_MSG_IF(m_triggerType == TriggerFrameType::BFRP_TRIGGER,
                     "BFRP Trigger frame is not supported");
@@ -1829,15 +1874,12 @@ CtrlTriggerHeader::Deserialize(Buffer::Iterator start)
     NS_ABORT_MSG_IF(m_triggerType == TriggerFrameType::NFRP_TRIGGER,
                     "NFRP Trigger frame is not supported");
 
-    bool isPadding = false;
-
-    // We always add a Padding field (of two octets of all 1s) as delimiter
-    while (!isPadding)
+    while (i.GetRemainingSize() >= 2)
     {
         // read the first 2 bytes to check if we encountered the Padding field
         if (i.ReadU16() == 0xffff)
         {
-            isPadding = true;
+            m_padding = i.GetRemainingSize() + 2;
         }
         else
         {
@@ -1874,8 +1916,7 @@ CtrlTriggerHeader::GetTypeString(TriggerFrameType type)
 {
 #define FOO(x)                                                                                     \
     case TriggerFrameType::x:                                                                      \
-        return #x;                                                                                 \
-        break;
+        return #x;
 
     switch (type)
     {
@@ -2110,6 +2151,19 @@ uint16_t
 CtrlTriggerHeader::GetUlSpatialReuse() const
 {
     return m_ulSpatialReuse;
+}
+
+void
+CtrlTriggerHeader::SetPaddingSize(std::size_t size)
+{
+    NS_ABORT_MSG_IF(size == 1, "The Padding field, if present, shall be at least two octets");
+    m_padding = size;
+}
+
+std::size_t
+CtrlTriggerHeader::GetPaddingSize() const
+{
+    return m_padding;
 }
 
 CtrlTriggerHeader

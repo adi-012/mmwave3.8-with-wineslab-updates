@@ -66,7 +66,7 @@ class NullMessageSimulatorImpl : public SimulatorImpl
     void Destroy() override;
     bool IsFinished() const override;
     void Stop() override;
-    void Stop(const Time& delay) override;
+    EventId Stop(const Time& delay) override;
     EventId Schedule(const Time& delay, EventImpl* event) override;
     void ScheduleWithContext(uint32_t context, const Time& delay, EventImpl* event) override;
     EventId ScheduleNow(EventImpl* event) override;
@@ -148,14 +148,14 @@ class NullMessageSimulatorImpl : public SimulatorImpl
      * \param bundle Bundle to reschedule Null Message event for
      *
      * Reschedule Null Message event for the specified
-     * RemoteChannelBundel.  Existing event will be canceled.
+     * RemoteChannelBundle.  Existing event will be canceled.
      */
     void RescheduleNullMessageEvent(Ptr<RemoteChannelBundle> bundle);
 
     /**
      * \param nodeSysId SystemID to reschedule null event for
      *
-     * Reschedule Null Message event for the RemoteChannelBundel to the
+     * Reschedule Null Message event for the RemoteChannelBundle to the
      * task nodeSysId.  Existing event will be canceled.
      */
     void RescheduleNullMessageEvent(uint32_t nodeSysId);
@@ -165,7 +165,7 @@ class NullMessageSimulatorImpl : public SimulatorImpl
      *
      * \return Guarantee time
      *
-     * Calculate the guarantee time for incoming RemoteChannelBundel
+     * Calculate the guarantee time for incoming RemoteChannelBundle
      * from task nodeSysId.  No message should arrive from task
      * nodeSysId with a receive time less than the guarantee time.
      */

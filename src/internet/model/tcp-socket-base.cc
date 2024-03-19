@@ -27,8 +27,13 @@
 #include "tcp-socket-base.h"
 
 #include "ipv4-end-point.h"
+#include "ipv4-route.h"
+#include "ipv4-routing-protocol.h"
+#include "ipv4.h"
 #include "ipv6-end-point.h"
 #include "ipv6-l3-protocol.h"
+#include "ipv6-route.h"
+#include "ipv6-routing-protocol.h"
 #include "rtt-estimator.h"
 #include "tcp-congestion-ops.h"
 #include "tcp-header.h"
@@ -37,6 +42,7 @@
 #include "tcp-option-sack.h"
 #include "tcp-option-ts.h"
 #include "tcp-option-winscale.h"
+#include "tcp-rate-ops.h"
 #include "tcp-recovery-ops.h"
 #include "tcp-rx-buffer.h"
 #include "tcp-tx-buffer.h"
@@ -46,13 +52,6 @@
 #include "ns3/double.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/inet6-socket-address.h"
-#include "ns3/ipv4-interface-address.h"
-#include "ns3/ipv4-route.h"
-#include "ns3/ipv4-routing-protocol.h"
-#include "ns3/ipv4.h"
-#include "ns3/ipv6-route.h"
-#include "ns3/ipv6-routing-protocol.h"
-#include "ns3/ipv6.h"
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/object.h"
@@ -60,7 +59,6 @@
 #include "ns3/pointer.h"
 #include "ns3/simulation-singleton.h"
 #include "ns3/simulator.h"
-#include "ns3/tcp-rate-ops.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/uinteger.h"
 
@@ -166,7 +164,7 @@ TcpSocketBase::GetTypeId()
             .AddAttribute("UseEcn",
                           "Parameter to set ECN functionality",
                           EnumValue(TcpSocketState::Off),
-                          MakeEnumAccessor(&TcpSocketBase::SetUseEcn),
+                          MakeEnumAccessor<TcpSocketState::UseEcn_t>(&TcpSocketBase::SetUseEcn),
                           MakeEnumChecker(TcpSocketState::Off,
                                           "Off",
                                           TcpSocketState::On,
@@ -513,14 +511,14 @@ TcpSocketBase::SetRtt(Ptr<RttEstimator> rtt)
 }
 
 /* Inherit from Socket class: Returns error code */
-enum Socket::SocketErrno
+Socket::SocketErrno
 TcpSocketBase::GetErrno() const
 {
     return m_errno;
 }
 
 /* Inherit from Socket class: Returns socket type, NS3_SOCK_STREAM */
-enum Socket::SocketType
+Socket::SocketType
 TcpSocketBase::GetSocketType() const
 {
     return NS3_SOCK_STREAM;
@@ -577,7 +575,6 @@ TcpSocketBase::Bind(const Address& address)
         InetSocketAddress transport = InetSocketAddress::ConvertFrom(address);
         Ipv4Address ipv4 = transport.GetIpv4();
         uint16_t port = transport.GetPort();
-        SetIpTos(transport.GetTos());
         if (ipv4 == Ipv4Address::GetAny() && port == 0)
         {
             m_endPoint = m_tcp->Allocate();
@@ -692,7 +689,6 @@ TcpSocketBase::Connect(const Address& address)
         }
         InetSocketAddress transport = InetSocketAddress::ConvertFrom(address);
         m_endPoint->SetPeer(transport.GetIpv4(), transport.GetPort());
-        SetIpTos(transport.GetTos());
         m_endPoint6 = nullptr;
 
         // Get the appropriate local address and port number from the routing protocol and set up
@@ -709,7 +705,7 @@ TcpSocketBase::Connect(const Address& address)
         // a v4 address and re-call this function
         Inet6SocketAddress transport = Inet6SocketAddress::ConvertFrom(address);
         Ipv6Address v6Addr = transport.GetIpv6();
-        if (v6Addr.IsIpv4MappedAddress() == true)
+        if (v6Addr.IsIpv4MappedAddress())
         {
             Ipv4Address v4Addr = v6Addr.GetIpv4MappedAddress();
             return Connect(InetSocketAddress(v4Addr, transport.GetPort()));
@@ -786,7 +782,7 @@ TcpSocketBase::Close()
 
     if (m_txBuffer->SizeFromSequence(m_tcb->m_nextTxSequence) > 0)
     { // App close with pending data must wait until all data transmitted
-        if (m_closeOnEmpty == false)
+        if (!m_closeOnEmpty)
         {
             m_closeOnEmpty = true;
             NS_LOG_INFO("Socket " << this << " deferring close, state " << TcpStateName[m_state]);
@@ -1596,13 +1592,9 @@ void
 TcpSocketBase::ReadOptions(const TcpHeader& tcpHeader, uint32_t* bytesSacked)
 {
     NS_LOG_FUNCTION(this << tcpHeader);
-    TcpHeader::TcpOptionList::const_iterator it;
-    const TcpHeader::TcpOptionList options = tcpHeader.GetOptionList();
 
-    for (it = options.begin(); it != options.end(); ++it)
+    for (const auto& option : tcpHeader.GetOptionList())
     {
-        const Ptr<const TcpOption> option = (*it);
-
         // Check only for ACK options here
         switch (option->GetKind())
         {
@@ -1695,7 +1687,8 @@ TcpSocketBase::EnterRecovery(uint32_t currentDelivered)
     }
 
     // (4.3) Retransmit the first data segment presumed dropped
-    DoRetransmit();
+    uint32_t sz = SendDataPacket(m_highRxAckMark, m_tcb->m_segmentSize, true);
+    NS_ASSERT_MSG(sz > 0, "SendDataPacket returned zero, indicating zero bytes were sent");
     // (4.4) Run SetPipe ()
     // (4.5) Proceed to step (C)
     // these steps are done after the ProcessAck function (SendPendingData)
@@ -1783,8 +1776,8 @@ TcpSocketBase::DupAck(uint32_t currentDelivered)
         // (2) If DupAcks < DupThresh but IsLost (HighACK + 1) returns true
         // (indicating at least three segments have arrived above the current
         // cumulative acknowledgment point, which is taken to indicate loss)
-        // go to step (4).
-        else if (m_txBuffer->IsLost(m_highRxAckMark + m_tcb->m_segmentSize))
+        // go to step (4).  Note that m_highRxAckMark is (HighACK + 1)
+        else if (m_txBuffer->IsLost(m_highRxAckMark))
         {
             EnterRecovery(currentDelivered);
             NS_ASSERT(m_tcb->m_congState == TcpSocketState::CA_RECOVERY);
@@ -1857,7 +1850,7 @@ TcpSocketBase::ReceivedAck(Ptr<Packet> packet, const TcpHeader& tcpHeader)
 
     m_txBuffer->DiscardUpTo(ackNumber, MakeCallback(&TcpRateOps::SkbDelivered, m_rateOps));
 
-    uint32_t currentDelivered =
+    auto currentDelivered =
         static_cast<uint32_t>(m_rateOps->GetConnectionRate().m_delivered - previousDelivered);
     m_tcb->m_lastAckedSackedBytes = currentDelivered;
 
@@ -2881,6 +2874,11 @@ TcpSocketBase::SendRST()
 void
 TcpSocketBase::DeallocateEndPoint()
 {
+    // note: it shouldn't be necessary to invalidate the callback and manually call
+    // TcpL4Protocol::RemoveSocket. Alas, if one relies on the endpoint destruction
+    // callback, there's a weird memory access to a free'd area. Harmless, but valgrind
+    // considers it an error.
+
     if (m_endPoint != nullptr)
     {
         CancelAllTimers();
@@ -3267,13 +3265,13 @@ TcpSocketBase::UpdateRttHistory(const SequenceNumber32& seq, uint32_t sz, bool i
     NS_LOG_FUNCTION(this);
 
     // update the history of sequence numbers used to calculate the RTT
-    if (isRetransmission == false)
+    if (!isRetransmission)
     { // This is the next expected one, just log at end
         m_history.emplace_back(seq, sz, Simulator::Now());
     }
     else
     { // This is a retransmit, find in list and mark as re-tx
-        for (std::deque<RttHistory>::iterator i = m_history.begin(); i != m_history.end(); ++i)
+        for (auto i = m_history.begin(); i != m_history.end(); ++i)
         {
             if ((seq >= i->seq) && (seq < (i->seq + SequenceNumber32(i->count))))
             { // Found it
@@ -3292,13 +3290,13 @@ TcpSocketBase::SendPendingData(bool withAck)
     NS_LOG_FUNCTION(this << withAck);
     if (m_txBuffer->Size() == 0)
     {
-        return false; // Nothing to send
+        return 0; // Nothing to send
     }
     if (m_endPoint == nullptr && m_endPoint6 == nullptr)
     {
         NS_LOG_INFO(
             "TcpSocketBase::SendPendingData: No endpoint; m_shutdownSend=" << m_shutdownSend);
-        return false; // Is this the right way to handle this condition?
+        return 0; // Is this the right way to handle this condition?
     }
 
     uint32_t nPacketsSent = 0;
@@ -3371,7 +3369,7 @@ TcpSocketBase::SendPendingData(bool withAck)
 
             uint32_t s = std::min(availableWindow, m_tcb->m_segmentSize);
             // NextSeg () may have further constrained the segment size
-            uint32_t maxSizeToSend = static_cast<uint32_t>(nextHigh - next);
+            auto maxSizeToSend = static_cast<uint32_t>(nextHigh - next);
             s = std::min(s, maxSizeToSend);
 
             // (C.2) If any of the data octets sent in (C.1) are below HighData,
@@ -4318,8 +4316,8 @@ TcpSocketBase::AddOptionSack(TcpHeader& header)
 
     // Append the allowed number of SACK blocks
     Ptr<TcpOptionSack> option = CreateObject<TcpOptionSack>();
-    TcpOptionSack::SackList::iterator i;
-    for (i = sackList.begin(); allowedSackBlocks > 0 && i != sackList.end(); ++i)
+
+    for (auto i = sackList.begin(); allowedSackBlocks > 0 && i != sackList.end(); ++i)
     {
         option->AddSackBlock(*i);
         allowedSackBlocks--;
@@ -4410,7 +4408,7 @@ TcpSocketBase::UpdateWindowSize(const TcpHeader& header)
         m_highRxMark = header.GetSequenceNumber();
         update = true;
     }
-    if (update == true)
+    if (update)
     {
         m_rWnd = receivedWindow;
         NS_LOG_LOGIC("updating rWnd to " << m_rWnd);

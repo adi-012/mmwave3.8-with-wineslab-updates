@@ -137,43 +137,43 @@ Time::Time(const std::string& s)
         double r;
         iss >> r;
         std::string trailer = s.substr(n, std::string::npos);
-        if (trailer == std::string("s"))
+        if (trailer == "s")
         {
             *this = Time::FromDouble(r, Time::S);
         }
-        else if (trailer == std::string("ms"))
+        else if (trailer == "ms")
         {
             *this = Time::FromDouble(r, Time::MS);
         }
-        else if (trailer == std::string("us"))
+        else if (trailer == "us")
         {
             *this = Time::FromDouble(r, Time::US);
         }
-        else if (trailer == std::string("ns"))
+        else if (trailer == "ns")
         {
             *this = Time::FromDouble(r, Time::NS);
         }
-        else if (trailer == std::string("ps"))
+        else if (trailer == "ps")
         {
             *this = Time::FromDouble(r, Time::PS);
         }
-        else if (trailer == std::string("fs"))
+        else if (trailer == "fs")
         {
             *this = Time::FromDouble(r, Time::FS);
         }
-        else if (trailer == std::string("min"))
+        else if (trailer == "min")
         {
             *this = Time::FromDouble(r, Time::MIN);
         }
-        else if (trailer == std::string("h"))
+        else if (trailer == "h")
         {
             *this = Time::FromDouble(r, Time::H);
         }
-        else if (trailer == std::string("d"))
+        else if (trailer == "d")
         {
             *this = Time::FromDouble(r, Time::D);
         }
-        else if (trailer == std::string("y"))
+        else if (trailer == "y")
         {
             *this = Time::FromDouble(r, Time::Y);
         }
@@ -199,7 +199,7 @@ Time::Time(const std::string& s)
 }
 
 // static
-struct Time::Resolution&
+Time::Resolution&
 Time::SetDefaultNsResolution()
 {
     NS_LOG_FUNCTION_NOARGS();
@@ -246,7 +246,7 @@ Time::SetResolution(Unit unit, Resolution* resolution, const bool convert /* = t
                                                << " has shift " << shift << " has quotient "
                                                << quotient);
 
-        struct Information* info = &resolution->info[i];
+        Information* info = &resolution->info[i];
         if ((std::pow(10, std::fabs(shift)) * quotient) >
             static_cast<double>(std::numeric_limits<int64_t>::max()))
         {
@@ -255,7 +255,7 @@ Time::SetResolution(Unit unit, Resolution* resolution, const bool convert /* = t
             info->isValid = false;
             continue;
         }
-        int64_t factor = static_cast<int64_t>(std::pow(10, std::fabs(shift)) * quotient);
+        auto factor = static_cast<int64_t>(std::pow(10, std::fabs(shift)) * quotient);
         double realFactor = std::pow(10, (double)shift) * static_cast<double>(UNIT_COEFF[i]) /
                             UNIT_COEFF[(int)unit];
         NS_LOG_DEBUG("SetResolution factor " << factor << " real factor " << realFactor);
@@ -333,12 +333,10 @@ Time::Mark(Time* const time)
     // since earlier test was outside and might be stale.
     if (g_markingTimes)
     {
-        std::pair<MarkedTimes::iterator, bool> ret;
-
-        ret = g_markingTimes->insert(time);
+        auto ret = g_markingTimes->insert(time);
         NS_LOG_LOGIC("\t[" << g_markingTimes->size() << "] recording " << time);
 
-        if (ret.second == false)
+        if (!ret.second)
         {
             NS_LOG_WARN("already recorded " << time << "!");
         }
@@ -385,11 +383,11 @@ Time::ConvertTimes(const Unit unit)
                   "No MarkedTimes registry. "
                   "Time::SetResolution () called more than once?");
 
-    for (MarkedTimes::iterator it = g_markingTimes->begin(); it != g_markingTimes->end(); it++)
+    for (auto it = g_markingTimes->begin(); it != g_markingTimes->end(); it++)
     {
         Time* const tp = *it;
-        if (!((tp->m_data == std::numeric_limits<int64_t>::min()) ||
-              (tp->m_data == std::numeric_limits<int64_t>::max())))
+        if (!(tp->m_data == std::numeric_limits<int64_t>::min() ||
+              tp->m_data == std::numeric_limits<int64_t>::max()))
         {
             tp->m_data = tp->ToInteger(unit);
         }
@@ -406,7 +404,7 @@ Time::ConvertTimes(const Unit unit)
 } // Time::ConvertTimes ()
 
 // static
-enum Time::Unit
+Time::Unit
 Time::GetResolution()
 {
     // No function log b/c it interferes with operator<<
@@ -434,7 +432,7 @@ operator<<(std::ostream& os, const TimeWithUnit& timeU)
 
     if (unit == Time::AUTO)
     {
-        long double value = static_cast<long double>(timeU.m_time.GetTimeStep());
+        auto value = static_cast<long double>(timeU.m_time.GetTimeStep());
         // convert to finest scale (fs)
         value *= Scale(Time::GetResolution());
         // find the best unit
@@ -547,7 +545,7 @@ MakeTimeChecker(const Time min, const Time max)
         bool Check(const AttributeValue& value) const override
         {
             NS_LOG_FUNCTION(&value);
-            const TimeValue* v = dynamic_cast<const TimeValue*>(&value);
+            const auto v = dynamic_cast<const TimeValue*>(&value);
             if (v == nullptr)
             {
                 return false;
@@ -585,8 +583,8 @@ MakeTimeChecker(const Time min, const Time max)
         bool Copy(const AttributeValue& source, AttributeValue& destination) const override
         {
             NS_LOG_FUNCTION(&source << &destination);
-            const TimeValue* src = dynamic_cast<const TimeValue*>(&source);
-            TimeValue* dst = dynamic_cast<TimeValue*>(&destination);
+            const auto src = dynamic_cast<const TimeValue*>(&source);
+            auto dst = dynamic_cast<TimeValue*>(&destination);
             if (src == nullptr || dst == nullptr)
             {
                 return false;

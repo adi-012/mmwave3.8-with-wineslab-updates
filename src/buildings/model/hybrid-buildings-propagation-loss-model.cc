@@ -21,9 +21,11 @@
 
 #include "hybrid-buildings-propagation-loss-model.h"
 
+#include "itu-r-1238-propagation-loss-model.h"
+#include "mobility-building-info.h"
+
 #include "ns3/double.h"
 #include "ns3/enum.h"
-#include "ns3/itu-r-1238-propagation-loss-model.h"
 #include "ns3/itu-r-1411-los-propagation-loss-model.h"
 #include "ns3/itu-r-1411-nlos-over-rooftop-propagation-loss-model.h"
 #include "ns3/kun-2600-mhz-propagation-loss-model.h"
@@ -31,7 +33,6 @@
 #include "ns3/mobility-model.h"
 #include "ns3/okumura-hata-propagation-loss-model.h"
 #include "ns3/pointer.h"
-#include <ns3/mobility-building-info.h>
 
 #include <cmath>
 
@@ -82,7 +83,8 @@ HybridBuildingsPropagationLossModel::GetTypeId()
             .AddAttribute("Environment",
                           "Environment Scenario",
                           EnumValue(UrbanEnvironment),
-                          MakeEnumAccessor(&HybridBuildingsPropagationLossModel::SetEnvironment),
+                          MakeEnumAccessor<EnvironmentType>(
+                              &HybridBuildingsPropagationLossModel::SetEnvironment),
                           MakeEnumChecker(UrbanEnvironment,
                                           "Urban",
                                           SubUrbanEnvironment,
@@ -94,7 +96,7 @@ HybridBuildingsPropagationLossModel::GetTypeId()
                 "CitySize",
                 "Dimension of the city",
                 EnumValue(LargeCity),
-                MakeEnumAccessor(&HybridBuildingsPropagationLossModel::SetCitySize),
+                MakeEnumAccessor<CitySize>(&HybridBuildingsPropagationLossModel::SetCitySize),
                 MakeEnumChecker(SmallCity, "Small", MediumCity, "Medium", LargeCity, "Large"))
 
             .AddAttribute(
@@ -277,11 +279,11 @@ HybridBuildingsPropagationLossModel::ItuR1411(Ptr<MobilityModel> a, Ptr<Mobility
 {
     if (a->GetDistanceFrom(b) < m_itu1411NlosThreshold)
     {
-        return (m_ituR1411Los->GetLoss(a, b));
+        return m_ituR1411Los->GetLoss(a, b);
     }
     else
     {
-        return (m_ituR1411NlosOverRooftop->GetLoss(a, b));
+        return m_ituR1411NlosOverRooftop->GetLoss(a, b);
     }
 }
 

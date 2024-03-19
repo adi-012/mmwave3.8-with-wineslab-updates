@@ -894,9 +894,7 @@ Ipv4DynamicGlobalRoutingTestCase::Ipv4DynamicGlobalRoutingTestCase()
 
 Ipv4DynamicGlobalRoutingTestCase::~Ipv4DynamicGlobalRoutingTestCase()
 {
-    std::vector<std::pair<Ptr<Socket>, bool>>::iterator iter;
-
-    for (iter = m_sendSocks.begin(); iter != m_sendSocks.end(); iter++)
+    for (auto iter = m_sendSocks.begin(); iter != m_sendSocks.end(); iter++)
     {
         if (iter->second)
         {
@@ -940,7 +938,7 @@ Ipv4DynamicGlobalRoutingTestCase::HandleRead(Ptr<Socket> socket)
 void
 Ipv4DynamicGlobalRoutingTestCase::SendData(uint8_t index)
 {
-    if (m_sendSocks[index].second == false)
+    if (!m_sendSocks[index].second)
     {
         return;
     }

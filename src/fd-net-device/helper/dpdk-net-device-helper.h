@@ -21,16 +21,15 @@
 #ifndef DPDK_NET_DEVICE_HELPER_H
 #define DPDK_NET_DEVICE_HELPER_H
 
-#include "ns3/emu-fd-net-device-helper.h"
+#include "emu-fd-net-device-helper.h"
 
 namespace ns3
 {
 
 /**
- * \ingroup dpdk-net-device
+ * \ingroup fd-net-device
  * \brief build a DpdkNetDevice object attached to a physical network
  * interface
- *
  */
 class DpdkNetDeviceHelper : public EmuFdNetDeviceHelper
 {
@@ -40,7 +39,7 @@ class DpdkNetDeviceHelper : public EmuFdNetDeviceHelper
      */
     DpdkNetDeviceHelper();
 
-    virtual ~DpdkNetDeviceHelper()
+    ~DpdkNetDeviceHelper() override
     {
     }
 
@@ -73,7 +72,7 @@ class DpdkNetDeviceHelper : public EmuFdNetDeviceHelper
      * \param node The node to install the device in
      * \returns A container holding the added net device.
      */
-    Ptr<NetDevice> InstallPriv(Ptr<Node> node) const;
+    Ptr<NetDevice> InstallPriv(Ptr<Node> node) const override;
 
     /**
      * Logical cores to use

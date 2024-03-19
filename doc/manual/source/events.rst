@@ -36,7 +36,79 @@ This chapter of the manual describes these fundamental objects
 Event
 *****
 
-*To be completed*
+An event represents something that changes the simulation status, i.e.,
+between two events the simulation status does not change, and the event
+will likely change it (it could also not change anything).
+
+Note that another way to understand an event is to consider it as a delayed
+function call. With the due differences, a discrete event simulation is not
+much different from a "normal" program where the functions are not called
+immediately, but are marked with a "time", and the time is used to decide
+the order of the functions execution.
+
+The time, of course, is a simulated time, and is quite different from the
+"real" time. Depending on the simulation complexity the simulated time
+can advance faster or slower then the "real" time, but like a "real" time
+can only go forward.
+
+An example of an event is the reception of a packet, or the expiration
+of a timer.
+
+An event is represented by:
+
+* The time at which the event will happen
+* A pointer to the function that will "handle" the event,
+* The parameters of the function that will handle the event (if any),
+* Other internal structures.
+
+An event is scheduled through a call to ``Simulator::Schedule``, and once
+scheduled, it can be canceled or removed.
+Removal implies removal from the scheduler data structure, while cancel
+keeps them in the data structure but sets a boolean flag that suppresses
+calling the bound event function at the scheduled time.  When an event is
+scheduled by the Simulator, an ``EventId`` is returned.  The client may use
+this event ID to later cancel or remove the event; see the example program
+``src/core/examples/sample-simulator.{cc,py}`` for example usage.
+Cancelling an event is typically less computationally expensive than
+removing it, but cancelled events consumes more memory in the scheduler
+data structure, which might impact its performances.
+
+Events are stored by the simulator in a scheduler data
+structure.  Events are handled in increasing order of
+simulator time, and in the case of two events with the same
+scheduled time, the event with the lowest unique ID (a
+monotonically increasing counter) will be handled first.
+In other words tied events are handled in FIFO order.
+
+Note that concurrent events (events that happen at the very same time)
+are unlikely in a real system - not to say impossible. In |ns3|
+concurrent events are common for a number of reasons, one of them
+being the time representation. While developing a model this must
+be carefully taken into account.
+
+During the event execution, the simulation time will not advance, i.e., each
+event is executed in zero time. This is a common assumption in
+discrete event simulations, and holds when the computational complexity of
+the operations executed in the event is negligible.
+When this assumption does not hold, it is necessary to schedule a second event
+to mimic the end of the computationally intensive task.
+
+As an example, suppose to have a device that receives a packet and has to
+perform a complex analysis on it (e.g., an image processing task). The
+sequence of events will be:
+
+* T(t) - Packet reception and processing, save the result somewhere, and
+  schedule an event in (t+d) marking the end of the data processing.
+* T(t+d) - Retrieve the data, and do other stuff based them.
+
+So, even if the data processing actually did return a result in the
+execution of the first event, the data is considered valid only after
+the second event.
+
+The image below can be useful to clarify the idea.
+
+.. image:: figures/time-consuming-event-handling.png
+
 
 Simulator
 *********
@@ -215,16 +287,16 @@ for example::
   GlobalValue::Bind("SimulatorImplementationType",
                     StringValue("ns3::DistributedSimulatorImpl"));
 
-or by using a command line argument::
+or by using a command line argument
 
-.. sourcecode:: bash
+.. sourcecode:: console
 
-  $ ./ns3 run "...  -–SimulatorImplementationType=ns3::DistributedSimulatorImpl"
+  $ ./ns3 run "...  --SimulatorImplementationType=ns3::DistributedSimulatorImpl"
 
 In addition to the basic simulator engines there is a general facility used
 to build "adapters" which provide small behavior modifications to one of
 the core `SimulatorImpl` engines.  The adapter base class is
-`SimulatorAdapter`, itself derived from `SimulatorImpl`.  `SimluatorAdapter`
+`SimulatorAdapter`, itself derived from `SimulatorImpl`.  `SimulatorAdapter`
 uses the `PIMPL (pointer to implementation) <https://en.cppreference.com/w/cpp/language/pimpl>`_
 idiom to forward all calls to the configured base simulator engine.
 This makes it easy to provide small customizations
@@ -233,7 +305,7 @@ just by overriding the specific Simulator calls needed, and allowing
 
 There are few places where adapters are used currently:
 
-*  `ReadltimeSimulatorImpl`  This adapter attempts to execute in real time
+*  `RealtimeSimulatorImpl`  This adapter attempts to execute in real time
    by pacing the wall clock evolution.  This pacing is "best effort",
    meaning actual event execution may not occur exactly in sync, but
    close to it. This engine is normally only used with the
@@ -326,20 +398,20 @@ complexity on `Insert()` and `RemoveNext()`, are listed in the
 following table.  See the individual Scheduler API pages for details on the
 complexity of the other API calls.
 
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-|  Scheduler Type                                             | Complexity                                           |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-|                       |                                     | Time                       | Space                   |
-|  `SchedulerImpl` Type |               Method                +-------------+--------------+----------+--------------+
-|                       |                                     | Insert()    | RemoveNext() | Overhead |  Per Event   |
-+=======================+=====================================+=============+==============+==========+==============+
-| CalendarScheduler     | `<std::list> []`                    | Constant    | Constant     | 24 bytes | 16 bytes     |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-| HeapScheduler         | Heap on `std::vector`               | Logarithmic | Logarithmic  | 24 bytes | 0            |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-| ListScheduler         | `std::list`                         | Linear      | Constant     | 24 bytes | 16 bytes     |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-| MapScheduler          | `st::map`                           | Logarithmic | Constant     | 40 bytes | 32 bytes     |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
-| PriorityQueueSchduler | `std::priority_queue<,std::vector>` | Logarithimc | Logarithims  | 24 bytes | 0            |
-+-----------------------+-------------------------------------+-------------+--------------+----------+--------------+
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+|  Scheduler Type                                              | Complexity                                           |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+|                        |                                     | Time                       | Space                   |
+|  `SchedulerImpl` Type  |               Method                +-------------+--------------+----------+--------------+
+|                        |                                     | Insert()    | RemoveNext() | Overhead |  Per Event   |
++========================+=====================================+=============+==============+==========+==============+
+| CalendarScheduler      | `<std::list> []`                    | Constant    | Constant     | 24 bytes | 16 bytes     |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+| HeapScheduler          | Heap on `std::vector`               | Logarithmic | Logarithmic  | 24 bytes | 0            |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+| ListScheduler          | `std::list`                         | Linear      | Constant     | 24 bytes | 16 bytes     |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+| MapScheduler           | `st::map`                           | Logarithmic | Constant     | 40 bytes | 32 bytes     |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+
+| PriorityQueueScheduler | `std::priority_queue<,std::vector>` | Logarithmic | Logarithms   | 24 bytes | 0            |
++------------------------+-------------------------------------+-------------+--------------+----------+--------------+

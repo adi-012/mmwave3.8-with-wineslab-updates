@@ -25,10 +25,10 @@
 #include "channel-access-manager.h"
 #include "ctrl-headers.h"
 #include "mac-tx-middle.h"
-#include "mgt-headers.h"
+#include "mgt-action-headers.h"
 #include "mpdu-aggregator.h"
 #include "msdu-aggregator.h"
-#include "qos-blocked-destinations.h"
+#include "wifi-mac-queue-scheduler.h"
 #include "wifi-mac-queue.h"
 #include "wifi-mac-trailer.h"
 #include "wifi-phy.h"
@@ -42,11 +42,7 @@
 #include "ns3/simulator.h"
 
 #undef NS_LOG_APPEND_CONTEXT
-#define NS_LOG_APPEND_CONTEXT                                                                      \
-    if (m_mac)                                                                                     \
-    {                                                                                              \
-        std::clog << "[mac=" << m_mac->GetAddress() << "] ";                                       \
-    }
+#define NS_LOG_APPEND_CONTEXT WIFI_TXOP_NS_LOG_APPEND_CONTEXT
 
 namespace ns3
 {
@@ -72,7 +68,7 @@ QosTxop::GetTypeId()
             .AddAttribute("AddBaResponseTimeout",
                           "The timeout to wait for ADDBA response after the Ack to "
                           "ADDBA request is received.",
-                          TimeValue(MilliSeconds(1)),
+                          TimeValue(MilliSeconds(5)),
                           MakeTimeAccessor(&QosTxop::SetAddBaResponseTimeout,
                                            &QosTxop::GetAddBaResponseTimeout),
                           MakeTimeChecker())
@@ -108,13 +104,39 @@ QosTxop::QosTxop(AcIndex ac)
       m_ac(ac)
 {
     NS_LOG_FUNCTION(this);
-    m_qosBlockedDestinations = Create<QosBlockedDestinations>();
     m_baManager = CreateObject<BlockAckManager>();
     m_baManager->SetQueue(m_queue);
     m_baManager->SetBlockDestinationCallback(
-        MakeCallback(&QosBlockedDestinations::Block, m_qosBlockedDestinations));
+        Callback<void, Mac48Address, uint8_t>([this](Mac48Address recipient, uint8_t tid) {
+            m_mac->GetMacQueueScheduler()->BlockQueues(WifiQueueBlockedReason::WAITING_ADDBA_RESP,
+                                                       m_ac,
+                                                       {WIFI_QOSDATA_QUEUE},
+                                                       recipient,
+                                                       m_mac->GetLocalAddress(recipient),
+                                                       {tid});
+        }));
     m_baManager->SetUnblockDestinationCallback(
-        MakeCallback(&QosBlockedDestinations::Unblock, m_qosBlockedDestinations));
+        Callback<void, Mac48Address, uint8_t>([this](Mac48Address recipient, uint8_t tid) {
+            // save the status of AC queues before unblocking the transmissions to the recipient
+            std::map<uint8_t, bool> hasFramesToTransmit;
+            for (const auto& [id, link] : GetLinks())
+            {
+                hasFramesToTransmit[id] = HasFramesToTransmit(id);
+            }
+
+            m_mac->GetMacQueueScheduler()->UnblockQueues(WifiQueueBlockedReason::WAITING_ADDBA_RESP,
+                                                         m_ac,
+                                                         {WIFI_QOSDATA_QUEUE},
+                                                         recipient,
+                                                         m_mac->GetLocalAddress(recipient),
+                                                         {tid});
+
+            // start access (if needed) on all the links
+            for (const auto& [id, link] : GetLinks())
+            {
+                StartAccessAfterEvent(id, hasFramesToTransmit.at(id), CHECK_MEDIUM_BUSY);
+            }
+        }));
     m_queue->TraceConnectWithoutContext(
         "Expired",
         MakeCallback(&BlockAckManager::NotifyDiscardedMpdu, m_baManager));
@@ -134,7 +156,6 @@ QosTxop::DoDispose()
         m_baManager->Dispose();
     }
     m_baManager = nullptr;
-    m_qosBlockedDestinations = nullptr;
     Txop::DoDispose();
 }
 
@@ -153,7 +174,7 @@ QosTxop::GetLink(uint8_t linkId) const
 uint8_t
 QosTxop::GetQosQueueSize(uint8_t tid, Mac48Address receiver) const
 {
-    WifiContainerQueueId queueId{WIFI_QOSDATA_UNICAST_QUEUE, receiver, tid};
+    WifiContainerQueueId queueId{WIFI_QOSDATA_QUEUE, WIFI_UNICAST, receiver, tid};
     uint32_t bufferSize = m_queue->GetNBytes(queueId);
     // A queue size value of 254 is used for all sizes greater than 64 768 octets.
     uint8_t queueSize = static_cast<uint8_t>(std::ceil(std::min(bufferSize, 64769U) / 256.0));
@@ -275,7 +296,7 @@ QosTxop::GetBaStartingSequence(Mac48Address address, uint8_t tid) const
     return m_baManager->GetOriginatorStartingSequence(address, tid);
 }
 
-Ptr<WifiMpdu>
+std::pair<CtrlBAckRequestHeader, WifiMacHeader>
 QosTxop::PrepareBlockAckRequest(Mac48Address recipient, uint8_t tid) const
 {
     NS_LOG_FUNCTION(this << recipient << +tid);
@@ -285,8 +306,6 @@ QosTxop::PrepareBlockAckRequest(Mac48Address recipient, uint8_t tid) const
 
     CtrlBAckRequestHeader reqHdr =
         m_baManager->GetBlockAckReqHeader(recipientMld.value_or(recipient), tid);
-    Ptr<Packet> bar = Create<Packet>();
-    bar->AddHeader(reqHdr);
 
     WifiMacHeader hdr;
     hdr.SetType(WIFI_MAC_CTL_BACKREQ);
@@ -297,7 +316,7 @@ QosTxop::PrepareBlockAckRequest(Mac48Address recipient, uint8_t tid) const
     hdr.SetNoRetry();
     hdr.SetNoMoreFragments();
 
-    return Create<WifiMpdu>(bar, hdr);
+    return {reqHdr, hdr};
 }
 
 bool
@@ -311,7 +330,7 @@ QosTxop::HasFramesToTransmit(uint8_t linkId)
 {
     // remove MSDUs with expired lifetime starting from the head of the queue
     m_queue->WipeAllExpiredMpdus();
-    bool queueIsNotEmpty = (bool)(m_queue->PeekFirstAvailable(linkId, m_qosBlockedDestinations));
+    bool queueIsNotEmpty = (bool)(m_queue->PeekFirstAvailable(linkId));
 
     NS_LOG_FUNCTION(this << queueIsNotEmpty);
     return queueIsNotEmpty;
@@ -347,12 +366,8 @@ QosTxop::IsQosOldPacket(Ptr<const WifiMpdu> mpdu)
         return false;
     }
 
-    if (QosUtilsIsOldPacket(GetBaStartingSequence(recipient, tid),
-                            mpdu->GetHeader().GetSequenceNumber()))
-    {
-        return true;
-    }
-    return false;
+    return QosUtilsIsOldPacket(GetBaStartingSequence(recipient, tid),
+                               mpdu->GetHeader().GetSequenceNumber());
 }
 
 Ptr<WifiMpdu>
@@ -364,13 +379,15 @@ QosTxop::PeekNextMpdu(uint8_t linkId, uint8_t tid, Mac48Address recipient, Ptr<c
     auto peek = [this, &linkId, &tid, &recipient, &mpdu]() -> Ptr<WifiMpdu> {
         if (tid == 8 && recipient.IsBroadcast()) // undefined TID and recipient
         {
-            return m_queue->PeekFirstAvailable(linkId, m_qosBlockedDestinations, mpdu);
+            return m_queue->PeekFirstAvailable(linkId, mpdu);
         }
-        if (m_qosBlockedDestinations->IsBlocked(recipient, tid))
+        WifiContainerQueueId queueId(WIFI_QOSDATA_QUEUE, WIFI_UNICAST, recipient, tid);
+        if (auto mask = m_mac->GetMacQueueScheduler()->GetQueueLinkMask(m_ac, queueId, linkId);
+            !mask || mask->none())
         {
-            return nullptr;
+            return m_queue->PeekByQueueId(queueId, mpdu);
         }
-        return m_queue->PeekByTidAndAddress(tid, recipient, mpdu);
+        return nullptr;
     };
 
     auto item = peek();
@@ -512,9 +529,11 @@ QosTxop::GetNextMpdu(uint8_t linkId,
                       GetBaStartingSequence(peekedItem->GetOriginal()->GetHeader().GetAddr1(), tid),
                       GetBaBufferSize(peekedItem->GetOriginal()->GetHeader().GetAddr1(), tid)));
 
-        // try A-MSDU aggregation
+        // try A-MSDU aggregation if the MPDU does not contain an A-MSDU and does not already
+        // have a sequence number assigned (may be a retransmission)
         if (m_mac->GetHtSupported() && !recipient.IsBroadcast() &&
-            !peekedItem->HasSeqNoAssigned() && !peekedItem->IsFragment())
+            !peekedItem->GetHeader().IsQosAmsdu() && !peekedItem->HasSeqNoAssigned() &&
+            !peekedItem->IsFragment())
         {
             auto htFem = StaticCast<HtFrameExchangeManager>(qosFem);
             mpdu = htFem->GetMsduAggregator()->GetNextAmsdu(peekedItem, txParams, availableTime);
@@ -564,12 +583,12 @@ QosTxop::NotifyChannelAccessed(uint8_t linkId, Time txopDuration)
     Txop::NotifyChannelAccessed(linkId);
 }
 
-bool
-QosTxop::IsTxopStarted(uint8_t linkId) const
+std::optional<Time>
+QosTxop::GetTxopStartTime(uint8_t linkId) const
 {
     auto& link = GetLink(linkId);
-    NS_LOG_FUNCTION(this << !link.startTxop.IsZero());
-    return (!link.startTxop.IsZero());
+    NS_LOG_FUNCTION(this << link.startTxop.has_value());
+    return link.startTxop;
 }
 
 void
@@ -578,23 +597,45 @@ QosTxop::NotifyChannelReleased(uint8_t linkId)
     NS_LOG_FUNCTION(this << +linkId);
     auto& link = GetLink(linkId);
 
-    if (link.startTxop.IsStrictlyPositive())
+    if (link.startTxop)
     {
-        NS_LOG_DEBUG("Terminating TXOP. Duration = " << Simulator::Now() - link.startTxop);
-        m_txopTrace(link.startTxop, Simulator::Now() - link.startTxop, linkId);
+        NS_LOG_DEBUG("Terminating TXOP. Duration = " << Simulator::Now() - *link.startTxop);
+        m_txopTrace(*link.startTxop, Simulator::Now() - *link.startTxop, linkId);
     }
-    link.startTxop = Seconds(0);
-    Txop::NotifyChannelReleased(linkId);
+
+    // generate a new backoff value if either the TXOP duration is not null (i.e., some frames
+    // were transmitted) or no frame was transmitted but the queue actually contains frame to
+    // transmit and the user indicated that a backoff value should be generated in this situation.
+    // This behavior reflects the following specs text (Sec. 35.3.16.4 of 802.11be D4.0):
+    // An AP or non-AP STA affiliated with an MLD that has gained the right to initiate the
+    // transmission of a frame as described in 10.23.2.4 (Obtaining an EDCA TXOP) for an AC but
+    // does not transmit any frame corresponding to that AC for the reasons stated above may:
+    // - invoke a backoff for the EDCAF associated with that AC as allowed per h) of 10.23.2.2
+    //   (EDCA backoff procedure).
+    auto hasTransmitted = link.startTxop.has_value() && Simulator::Now() > *link.startTxop;
+
+    m_queue->WipeAllExpiredMpdus();
+    if ((hasTransmitted) ||
+        (!m_queue->IsEmpty() && m_mac->GetChannelAccessManager(linkId)->GetGenerateBackoffOnNoTx()))
+    {
+        GenerateBackoff(linkId);
+        if (!m_queue->IsEmpty())
+        {
+            Simulator::ScheduleNow(&QosTxop::RequestAccess, this, linkId);
+        }
+    }
+    link.startTxop.reset();
+    GetLink(linkId).access = NOT_REQUESTED;
 }
 
 Time
 QosTxop::GetRemainingTxop(uint8_t linkId) const
 {
     auto& link = GetLink(linkId);
-    NS_ASSERT(link.startTxop.IsStrictlyPositive());
+    NS_ASSERT(link.startTxop.has_value());
 
     Time remainingTxop = link.txopDuration;
-    remainingTxop -= (Simulator::Now() - link.startTxop);
+    remainingTxop -= (Simulator::Now() - *link.startTxop);
     if (remainingTxop.IsStrictlyNegative())
     {
         remainingTxop = Seconds(0);
@@ -608,6 +649,7 @@ QosTxop::GotAddBaResponse(const MgtAddBaResponseHeader& respHdr, Mac48Address re
 {
     NS_LOG_FUNCTION(this << respHdr << recipient);
     uint8_t tid = respHdr.GetTid();
+
     if (respHdr.GetStatusCode().IsSuccess())
     {
         NS_LOG_DEBUG("block ack agreement established with " << recipient << " tid " << +tid);
@@ -631,11 +673,6 @@ QosTxop::GotAddBaResponse(const MgtAddBaResponseHeader& respHdr, Mac48Address re
         NS_LOG_DEBUG("discard ADDBA response" << recipient);
         m_baManager->NotifyOriginatorAgreementRejected(recipient, tid);
     }
-
-    for (uint8_t linkId = 0; linkId < GetNLinks(); linkId++)
-    {
-        StartAccessIfNeeded(linkId);
-    }
 }
 
 void
@@ -650,14 +687,7 @@ void
 QosTxop::NotifyOriginatorAgreementNoReply(const Mac48Address& recipient, uint8_t tid)
 {
     NS_LOG_FUNCTION(this << recipient << tid);
-
     m_baManager->NotifyOriginatorAgreementNoReply(recipient, tid);
-    // the recipient has been "unblocked" and transmissions can resume using normal
-    // acknowledgment, hence start access (if needed) on all the links
-    for (uint8_t linkId = 0; linkId < GetNLinks(); linkId++)
-    {
-        StartAccessIfNeeded(linkId);
-    }
 }
 
 void

@@ -155,11 +155,11 @@ IEEE 802.15.4 supports 4 types of scanning:
 
 * *Energy Detection (ED) Scan:* In an energy scan, a device or a coordinator scan a set number of channels looking for traces of energy. The maximum energy registered during a given amount of time is stored. Energy scan is typically used to measure the quality of a channel at any given time. For this reason, coordinators often use this scan before initiating a PAN on a channel.
 
-* *Active Scan:* A device sends beacon requests on a set number of channels looking for a PAN coordinator. The receiving coordinator must be configured on non-beacon mode. Coordinators on beacon-mode ignore these requests. The coordinators who accept the request, respond with a beacon. After an active scan take place, during the association process devices extract the information in the PAN descriptors from the collected beacons and based on this information (e.g. channel, LQI level), choose a coordinator to associate with.
+* *Active Scan:* A device sends ``beacon request commands`` on a set number of channels looking for a PAN coordinator. The receiving coordinator must be configured on non-beacon mode. Coordinators on beacon-mode ignore these requests. The coordinators who accept the request, respond with a beacon. After an active scan take place, during the association process devices extract the information in the PAN descriptors from the collected beacons and based on this information (e.g. channel, LQI level), choose a coordinator to associate with.
 
-* *Passive Scan:* In a passive scan, no beacon requests are sent. Devices scan a set number of channels looking for beacons currently being transmitted (coordinators in beacon-mode). Like in the active scan, the information from beacons is stored in PAN descriptors and used by the device to choose a coordinator to associate with.
+* *Passive Scan:* In a passive scan, no ``beacon requests commands`` are sent. Devices scan a set number of channels looking for beacons currently being transmitted (coordinators in beacon-mode). Like in the active scan, the information from beacons is stored in PAN descriptors and used by the device to choose a coordinator to associate with.
 
-* *Orphan Scan:* <Not supported by ns-3>
+* *Orphan Scan:* Orphan scan is used typically by device as a result of repeated communication failure attempts with a coordinator. In other words, an orphan scan represents the intent of a device to relocate its coordinator. In some situations, it can be used by devices higher layers to not only rejoin a network but also join a network for the first time. In an orphan scan, a device send a ``orphan notification command`` to a given list of channels. If a coordinator receives this notification, it responds to the device with a ``coordinator realignment command``.
 
 In active and passive scans, the link quality indicator (LQI) is the main parameter used to
 determine the optimal coordinator. LQI values range from 0 to 255. Where 255 is the highest quality link value and 0 the lowest. Typically, a link lower than 127 is considered a link with poor quality.
@@ -220,7 +220,10 @@ reference packets (11 bytes MAC header + 7 bytes payload (MSDU) + FCS 2 bytes). 
 have the effect to receive more packets (and at a greater distance) but it raises the probability to have dropped packets at the
 MAC layer or the probability of corrupted packets. By default, the receiver sensitivity is set to the maximum theoretical possible value of -106.58 dBm for the supported IEEE 802.15.4 O-QPSK 250kps.
 This rx sensitivity is set for the "perfect radio" which only considers the floor noise, in essence, this do not include the noise factor (noise introduced by imperfections in the demodulator chip or external factors).
-The receiver sensitivity can be changed to different values using ``SetRxSensitivity`` function in the PHY to simulate the hearing capabilities of different compliant radio transceivers (the standard minimum compliant Rx sensitivity is -85 dBm).:::
+The receiver sensitivity can be changed to different values using ``SetRxSensitivity`` function in the PHY to simulate the hearing capabilities of different compliant radio transceivers (the standard minimum compliant Rx sensitivity is -85 dBm).:
+
+::
+
                                                               (defined by the standard)
    NoiseFloor          Max Sensitivity                          Min Sensitivity
    -106.987dBm          -106.58dBm                                   -85dBm
@@ -229,10 +232,10 @@ The receiver sensitivity can be changed to different values using ``SetRxSensiti
                               | <--------------------------------------->|
                                     Acceptable sensitivity range
 
-The example ``lr-wpan-per-plot.cc` shows that at given Rx sensitiviy, packets are dropped regardless of their theoretical error probability.
+The example ``lr-wpan-per-plot.cc` shows that at given Rx sensitivity, packets are dropped regardless of their theoretical error probability.
 This program outputs a file named ``802.15.4-per-vs-rxSignal.plt``.
 Loading this file into gnuplot yields a file ``802.15.4-per-vs-rsSignal.eps``, which can
-be converted to pdf or other formats. Packet payload size, Tx power and Rx sensitivity can be configurated.
+be converted to pdf or other formats. Packet payload size, Tx power and Rx sensitivity can be configured.
 The point where the blue line crosses with the PER indicates the Rx sensitivity. The default output is shown below.
 
 .. _fig-802-15-4-per-sens:
@@ -298,7 +301,7 @@ in the upper-layer notification callback, which can contain either the pseudo-ad
 the long address (64 bit) of the sender.
 
 Note also that RFC 4944 or RFC 6282 are the RFCs defining the IPv6 address compression formats
-(HC1 and IPHC respectively). It is defintely not a good idea to either mix devices using different
+(HC1 and IPHC respectively). It is definitely not a good idea to either mix devices using different
 pseudo-address format or compression types in the same network. This point is further discussed
 in the ``sixlowpan`` module documentation.
 
@@ -315,7 +318,7 @@ running on both, slotted and unslotted mode (CSMA/CA) of 802.15.4 operation for 
 - The standard describes the support of multiple PHY band-modulations but currently, only 250kbps O-QPSK (channel page 0) is supported.
 - Active and passive MAC scans are able to obtain a LQI value from a beacon frame, however, the scan primitives assumes LQI is correctly implemented and does not check the validity of its value.
 - Configuration of the ED thresholds are currently not supported.
-- Orphan scans are not supported.
+- Coordinator realignment command is only supported in orphan scans.
 - Disassociation primitives are not supported.
 - Security is not supported.
 - Beacon enabled mode GTS are not supported.
@@ -324,8 +327,10 @@ References
 ==========
 
 * Wireless Medium Access Control (MAC) and Physical Layer (PHY) Specifications for Low-Rate Wireless Personal Area Networks (WPANs), IEEE Computer Society, IEEE Std 802.15.4-2006, 8 September 2006.
+* IEEE Standard for Local and metropolitan area networks--Part 15.4: Low-Rate Wireless Personal Area Networks (LR-WPANs)," in IEEE Std 802.15.4-2011 (Revision of IEEE Std 802.15.4-2006) , vol., no., pp.1-314, 5 Sept. 2011, doi: 10.1109/IEEESTD.2011.6012487.
 * J. Zheng and Myung J. Lee, "A comprehensive performance study of IEEE 802.15.4," Sensor Network Operations, IEEE Press, Wiley Interscience, Chapter 4, pp. 218-237, 2006.
 * Alberto Gallegos Ramonet and Taku Noguchi. 2020. LR-WPAN: Beacon Enabled Direct Transmissions on Ns-3. In 2020 the 6th International Conference on Communication and Information Processing (ICCIP 2020). Association for Computing Machinery, New York, NY, USA, 115–122. https://doi.org/10.1145/3442555.3442574.
+* Gallegos Ramonet, A.; Noguchi, T. Performance Analysis of IEEE 802.15.4 Bootstrap Process. Electronics 2022, 11, 4090. https://doi.org/10.3390/electronics11244090.
 
 Usage
 *****
@@ -362,6 +367,7 @@ The following examples have been written, which can be found in ``src/lr-wpan/ex
 * ``lr-wpan-active-scan.cc``:  A simple example showing the use of an active scan in the MAC.
 * ``lr-wpan-mlme.cc``: Demonstrates the use of lr-wpan beacon mode. Nodes use a manual association (i.e. No bootstrap) in this example.
 * ``lr-wpan-bootstrap.cc``:  Demonstrates the use of scanning and association working together to initiate a PAN.
+* ``lr-wpan-orphan-scan.cc``: Demonstrates the use of an orphan scanning in a simple network joining procedure.
 
 
 In particular, the module enables a very simplified end-to-end data
@@ -387,8 +393,8 @@ The program outputs a file named ``802.15.4-psr-distance.plt``.
 Loading this file into gnuplot yields a file ``802.15.4-psr-distance.eps``, which can
 be converted to pdf or other formats.  The following image shows the output
 of multiple runs using different Rx sensitivity values. A higher Rx sensitivity (lower dBm) results
-in a increased communication distance but also makes the radio suceptible to more interference from
-surronding devices.
+in a increased communication distance but also makes the radio susceptible to more interference from
+surrounding devices.
 
 .. _fig-802-15-4-psr-distance:
 

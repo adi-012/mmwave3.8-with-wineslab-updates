@@ -32,6 +32,9 @@
 
 #include <array>
 
+#undef NS_LOG_APPEND_CONTEXT
+#define NS_LOG_APPEND_CONTEXT WIFI_PHY_NS_LOG_APPEND_CONTEXT(m_wifiPhy)
+
 namespace ns3
 {
 
@@ -101,7 +104,7 @@ const std::map<uint16_t, std::array<uint64_t, 8>>&
 GetOfdmRatesBpsList()
 {
     return s_ofdmRatesBpsList;
-};
+}
 
 OfdmPhy::OfdmPhy(OfdmPhyVariant variant /* = OFDM_PHY_DEFAULT */, bool buildModeList /* = true */)
 {
@@ -298,9 +301,7 @@ OfdmPhy::BuildPpdu(const WifiConstPsduMap& psdus,
     return Create<OfdmPpdu>(
         psdus.begin()->second,
         txVector,
-        m_wifiPhy->GetOperatingChannel().GetPrimaryChannelCenterFrequency(
-            txVector.GetChannelWidth()),
-        m_wifiPhy->GetPhyBand(),
+        m_wifiPhy->GetOperatingChannel(),
         m_wifiPhy->GetLatestPhyEntity()->ObtainNextUid(
             txVector)); // use latest PHY entity to handle MU-RTS sent with non-HT rate
 }
@@ -497,7 +498,7 @@ OfdmPhy::GetOfdmRate(uint64_t rate, uint16_t bw)
     {                                                                                              \
         static WifiMode mode = CreateOfdmMode(#x, f);                                              \
         return mode;                                                                               \
-    };
+    }
 
 // 20 MHz channel rates (default)
 GET_OFDM_MODE(OfdmRate6Mbps, true)
@@ -684,6 +685,25 @@ OfdmPhy::GetCcaThreshold(const Ptr<const WifiPpdu> ppdu, WifiChannelListType cha
         return WToDbm(thresholdW);
     }
     return PhyEntity::GetCcaThreshold(ppdu, channelType);
+}
+
+Ptr<const WifiPpdu>
+OfdmPhy::GetRxPpduFromTxPpdu(Ptr<const WifiPpdu> ppdu)
+{
+    const auto txWidth = ppdu->GetTxChannelWidth();
+    const auto& txVector = ppdu->GetTxVector();
+    // Update channel width in TXVECTOR for non-HT duplicate PPDUs.
+    if (txVector.IsNonHtDuplicate() && txWidth > m_wifiPhy->GetChannelWidth())
+    {
+        // We also do a copy of the PPDU for non-HT duplicate PPDUs since other
+        // PHYs might set a different channel width in the reconstructed TXVECTOR.
+        auto rxPpdu = ppdu->Copy();
+        auto updatedTxVector = txVector;
+        updatedTxVector.SetChannelWidth(std::min(txWidth, m_wifiPhy->GetChannelWidth()));
+        rxPpdu->UpdateTxVector(updatedTxVector);
+        return rxPpdu;
+    }
+    return PhyEntity::GetRxPpduFromTxPpdu(ppdu);
 }
 
 } // namespace ns3

@@ -28,6 +28,7 @@
 #include "ns3/ssid.h"
 #include "ns3/string.h"
 #include "ns3/udp-client-server-helper.h"
+#include "ns3/udp-server.h"
 #include "ns3/wifi-mac.h"
 #include "ns3/wifi-net-device.h"
 #include "ns3/yans-wifi-channel.h"
@@ -96,8 +97,8 @@ main(int argc, char* argv[])
     uint32_t payloadSize = 1472; // bytes
     double simulationTime = 10;  // seconds
     double distance = 5;         // meters
-    bool enablePcap = 0;
-    bool verifyResults = 0; // used for regression
+    bool enablePcap = false;
+    bool verifyResults = false; // used for regression
     Time txopLimit = MicroSeconds(4096);
 
     CommandLine cmd(__FILE__);
@@ -298,13 +299,13 @@ main(int argc, char* argv[])
     serverAppA.Stop(Seconds(simulationTime + 1));
 
     InetSocketAddress destA(ApInterfaceA.GetAddress(0), port);
-    destA.SetTos(0x70); // AC_BE
 
     OnOffHelper clientA("ns3::UdpSocketFactory", destA);
     clientA.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
     clientA.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
     clientA.SetAttribute("DataRate", StringValue("100000kb/s"));
     clientA.SetAttribute("PacketSize", UintegerValue(payloadSize));
+    clientA.SetAttribute("Tos", UintegerValue(0x70)); // AC_BE
 
     ApplicationContainer clientAppA = clientA.Install(wifiStaNodes.Get(0));
     clientAppA.Start(Seconds(1.0));
@@ -316,13 +317,13 @@ main(int argc, char* argv[])
     serverAppB.Stop(Seconds(simulationTime + 1));
 
     InetSocketAddress destB(ApInterfaceB.GetAddress(0), port);
-    destB.SetTos(0x70); // AC_BE
 
     OnOffHelper clientB("ns3::UdpSocketFactory", destB);
     clientB.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
     clientB.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
     clientB.SetAttribute("DataRate", StringValue("100000kb/s"));
     clientB.SetAttribute("PacketSize", UintegerValue(payloadSize));
+    clientB.SetAttribute("Tos", UintegerValue(0x70)); // AC_BE
 
     ApplicationContainer clientAppB = clientB.Install(wifiStaNodes.Get(1));
     clientAppB.Start(Seconds(1.0));
@@ -334,13 +335,13 @@ main(int argc, char* argv[])
     serverAppC.Stop(Seconds(simulationTime + 1));
 
     InetSocketAddress destC(ApInterfaceC.GetAddress(0), port);
-    destC.SetTos(0xb8); // AC_VI
 
     OnOffHelper clientC("ns3::UdpSocketFactory", destC);
     clientC.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
     clientC.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
     clientC.SetAttribute("DataRate", StringValue("100000kb/s"));
     clientC.SetAttribute("PacketSize", UintegerValue(payloadSize));
+    clientC.SetAttribute("Tos", UintegerValue(0xb8)); // AC_VI
 
     ApplicationContainer clientAppC = clientC.Install(wifiStaNodes.Get(2));
     clientAppC.Start(Seconds(1.0));
@@ -352,13 +353,13 @@ main(int argc, char* argv[])
     serverAppD.Stop(Seconds(simulationTime + 1));
 
     InetSocketAddress destD(ApInterfaceD.GetAddress(0), port);
-    destD.SetTos(0xb8); // AC_VI
 
     OnOffHelper clientD("ns3::UdpSocketFactory", destD);
     clientD.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
     clientD.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
     clientD.SetAttribute("DataRate", StringValue("100000kb/s"));
     clientD.SetAttribute("PacketSize", UintegerValue(payloadSize));
+    clientD.SetAttribute("Tos", UintegerValue(0xb8)); // AC_VI
 
     ApplicationContainer clientAppD = clientD.Install(wifiStaNodes.Get(3));
     clientAppD.Start(Seconds(1.0));

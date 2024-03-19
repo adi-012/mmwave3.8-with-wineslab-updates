@@ -15,6 +15,80 @@
 #
 # Author: Gabriel Ferreira <gabrielcarvfer@gmail.com>
 
+add_custom_target(copy_all_headers)
+function(copy_headers_before_building_lib libname outputdir headers visibility)
+  foreach(header ${headers})
+    # Copy header to output directory on changes -> too darn slow
+    # configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${header} ${outputdir}/
+    # COPYONLY)
+
+    get_filename_component(
+      header_name ${CMAKE_CURRENT_SOURCE_DIR}/${header} NAME
+    )
+
+    # If output directory does not exist, create it
+    if(NOT (EXISTS ${outputdir}))
+      file(MAKE_DIRECTORY ${outputdir})
+    endif()
+
+    # If header already exists, skip symlinking/stub header creation
+    if(EXISTS ${outputdir}/${header_name})
+      continue()
+    endif()
+
+    # Create a stub header in the output directory, including the real header
+    # inside their respective module
+    get_filename_component(
+      ABSOLUTE_HEADER_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${header}" ABSOLUTE
+    )
+    file(WRITE ${outputdir}/${header_name}
+         "#include \"${ABSOLUTE_HEADER_PATH}\"\n"
+    )
+  endforeach()
+endfunction(copy_headers_before_building_lib)
+
+function(remove_lib_prefix prefixed_library library)
+  # Check if there is a lib prefix
+  string(FIND "${prefixed_library}" "lib" lib_pos)
+
+  # If there is a lib prefix, try to remove it
+  if(${lib_pos} EQUAL 0)
+    # Check if we still have something remaining after removing the "lib" prefix
+    string(LENGTH ${prefixed_library} len)
+    if(${len} LESS 4)
+      message(FATAL_ERROR "Invalid library name: ${prefixed_library}")
+    endif()
+
+    # Remove lib prefix from module name (e.g. libcore -> core)
+    string(SUBSTRING "${prefixed_library}" 3 -1 unprefixed_library)
+  else()
+    set(unprefixed_library ${prefixed_library})
+  endif()
+
+  # Save the unprefixed library name to the parent scope
+  set(${library} ${unprefixed_library} PARENT_SCOPE)
+endfunction()
+
+function(check_for_missing_libraries output_variable_name libraries)
+  set(missing_dependencies)
+  foreach(lib ${libraries})
+    # skip check for ns-3 modules if its a path to a library
+    if(EXISTS ${lib})
+      continue()
+    endif()
+
+    # check if the example depends on disabled modules
+    remove_lib_prefix("${lib}" lib)
+
+    # Check if the module exists in the ns-3 modules list or if it is a
+    # 3rd-party library
+    if(NOT (${lib} IN_LIST ns3-all-enabled-modules))
+      list(APPEND missing_dependencies ${lib})
+    endif()
+  endforeach()
+  set(${output_variable_name} ${missing_dependencies} PARENT_SCOPE)
+endfunction()
+
 # cmake-format: off
 #
 # This macro processes a ns-3 module
@@ -94,6 +168,7 @@ function(build_lib)
   add_library(ns3::${lib${BLIB_LIBNAME}} ALIAS ${lib${BLIB_LIBNAME}})
 
   # Associate public headers with library for installation purposes
+  set(config_headers)
   if("${BLIB_LIBNAME}" STREQUAL "core")
     set(config_headers ${CMAKE_HEADER_OUTPUT_DIRECTORY}/config-store-config.h
                        ${CMAKE_HEADER_OUTPUT_DIRECTORY}/core-config.h
@@ -102,10 +177,6 @@ function(build_lib)
       list(APPEND config_headers
            ${CMAKE_HEADER_OUTPUT_DIRECTORY}/version-defines.h
       )
-    endif()
-
-    if(NOT FILESYSTEM_LIBRARY_IS_LINKED)
-      list(APPEND BLIB_LIBRARIES_TO_LINK -lstdc++fs)
     endif()
 
     # Enable examples as tests suites
@@ -144,6 +215,15 @@ function(build_lib)
   foreach(library ${BLIB_LIBRARIES_TO_LINK})
     remove_lib_prefix("${library}" module_name)
 
+    # Ignore the case where the library dependency name match the ns-3 module
+    # since it is most likely is due to brite, click and openflow collisions.
+    # All the ns-3 module targets should be prefixed with 'lib' to be
+    # differentiable.
+    if("${library}" STREQUAL "${BLIB_LIBNAME}")
+      list(APPEND non_ns_libraries_to_link ${library})
+      continue()
+    endif()
+
     # Check if the module exists in the ns-3 modules list or if it is a
     # 3rd-party library
     if(${module_name} IN_LIST ns3-all-enabled-modules)
@@ -180,9 +260,29 @@ function(build_lib)
     # include directories, allowing consumers of this module to include and link
     # the 3rd-party code with no additional setup
     get_target_includes(${lib${BLIB_LIBNAME}} exported_include_directories)
+
     string(REPLACE "-I" "" exported_include_directories
                    "${exported_include_directories}"
     )
+
+    # include directories prefixed in the source or binary directory need to be
+    # treated differently
+    set(new_exported_include_directories)
+    foreach(directory ${exported_include_directories})
+      string(FIND "${directory}" "${PROJECT_SOURCE_DIR}" is_prefixed_in_subdir)
+      if(${is_prefixed_in_subdir} GREATER_EQUAL 0)
+        string(SUBSTRING "${directory}" ${is_prefixed_in_subdir} -1
+                         directory_path
+        )
+        list(APPEND new_exported_include_directories
+             $<BUILD_INTERFACE:${directory_path}>
+        )
+      else()
+        list(APPEND new_exported_include_directories ${directory})
+      endif()
+    endforeach()
+    set(exported_include_directories ${new_exported_include_directories})
+
     string(REPLACE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/include" ""
                    exported_include_directories
                    "${exported_include_directories}"
@@ -192,6 +292,12 @@ function(build_lib)
   target_link_libraries(
     ${lib${BLIB_LIBNAME}} ${exported_libraries} ${private_libraries}
   )
+
+  if(NOT ${XCODE})
+    target_link_libraries(
+      ${lib${BLIB_LIBNAME}}-obj PRIVATE ${ns_libraries_to_link}
+    )
+  endif()
 
   # set output name of library
   set_target_properties(
@@ -208,6 +314,23 @@ function(build_lib)
     PUBLIC $<BUILD_INTERFACE:${CMAKE_OUTPUT_DIRECTORY}/include>
            $<INSTALL_INTERFACE:include>
     INTERFACE ${exported_include_directories}
+  )
+
+  # Export definitions as interface definitions, propagating local definitions
+  # to other modules and scratches
+  get_target_property(
+    target_definitions ${lib${BLIB_LIBNAME}} COMPILE_DEFINITIONS
+  )
+  if(${target_definitions} STREQUAL "target_definitions-NOTFOUND")
+    set(target_definitions)
+  endif()
+  get_directory_property(dir_definitions COMPILE_DEFINITIONS)
+  set(exported_definitions "${target_definitions};${dir_definitions}")
+  list(REMOVE_DUPLICATES exported_definitions)
+  list(REMOVE_ITEM exported_definitions "")
+  set_target_properties(
+    ${lib${BLIB_LIBNAME}} PROPERTIES INTERFACE_COMPILE_DEFINITIONS
+                                     "${exported_definitions}"
   )
 
   set(ns3-external-libs "${non_ns_libraries_to_link};${ns3-external-libs}"
@@ -406,8 +529,9 @@ function(build_lib_example)
 
   if((NOT missing_dependencies) AND ${filtered_in})
     # Convert boolean into text to forward argument
+    set(IGNORE_PCH)
     if(${BLIB_EXAMPLE_IGNORE_PCH})
-      set(IGNORE_PCH IGNORE_PCH)
+      set(IGNORE_PCH "IGNORE_PCH")
     endif()
     # Create executable with sources and headers
     # cmake-format: off
@@ -417,7 +541,7 @@ function(build_lib_example)
       HEADER_FILES ${BLIB_EXAMPLE_HEADER_FILES}
       LIBRARIES_TO_LINK
         ${lib${BLIB_LIBNAME}} ${BLIB_EXAMPLE_LIBRARIES_TO_LINK}
-        ${optional_visualizer_lib}
+        ${ns3-optional-visualizer-lib}
       EXECUTABLE_DIRECTORY_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${FOLDER}/
       ${IGNORE_PCH}
     )

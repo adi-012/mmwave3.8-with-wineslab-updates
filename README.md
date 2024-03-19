@@ -1,96 +1,215 @@
-# mmWave ns-3 module #
+# The Network Simulator, Version 3
 
-This is an [ns-3](https://www.nsnam.org "ns-3 Website") module for the simulation
-of 5G cellular networks operating at mmWaves. A description of this module can be found in [this paper](https://ieeexplore.ieee.org/document/8344116/ "mmwave paper").
+[![codecov](https://codecov.io/gh/nsnam/ns-3-dev-git/branch/master/graph/badge.svg)](https://codecov.io/gh/nsnam/ns-3-dev-git/branch/master/)
+[![Gitlab CI](https://gitlab.com/nsnam/ns-3-dev/badges/master/pipeline.svg)](https://gitlab.com/nsnam/ns-3-dev/-/pipelines)
+[![Github CI](https://github.com/nsnam/ns-3-dev-git/actions/workflows/per_commit.yml/badge.svg)](https://github.com/nsnam/ns-3-dev-git/actions)
 
-Main features:
+[![Latest Release](https://gitlab.com/nsnam/ns-3-dev/-/badges/release.svg)](https://gitlab.com/nsnam/ns-3-dev/-/releases)
 
-* Support of a wide range of channel models, including the model based on 3GPP TR 38.901 for frequencies between 0.5 and 100 GHz. Ray tracing and measured traces can also be used.
+## Table of Contents
 
-* Custom PHY and MAC classes supporting the 3GPP NR frame structure and numerologies.
+* [Overview](#overview-an-open-source-project)
+* [Building ns-3](#building-ns-3)
+* [Testing ns-3](#testing-ns-3)
+* [Running ns-3](#running-ns-3)
+* [ns-3 Documentation](#ns-3-documentation)
+* [Working with the Development Version of ns-3](#working-with-the-development-version-of-ns-3)
+* [Contributing to ns-3](#contributing-to-ns-3)
+* [Reporting Issues](#reporting-issues)
+* [ns-3 App Store](#ns-3-app-store)
 
-* Custom schedulers for supporting dynamic TDD formats
+> **NOTE**: Much more substantial information about ns-3 can be found at
+<https://www.nsnam.org>
 
-* Carrier Aggregation at the MAC layer
+## Overview: An Open Source Project
 
-* Enhancements to the RLC layer with re-segmentation of packets for retransmissions
+ns-3 is a free open source project aiming to build a discrete-event
+network simulator targeted for simulation research and education.
+This is a collaborative project; we hope that
+the missing pieces of the models we have not yet implemented
+will be contributed by the community in an open collaboration
+process. If you would like to contribute to ns-3, please check
+the [Contributing to ns-3](#contributing-to-ns-3) section below.
 
-* Dual Connectivity with LTE base stations, with fast secondary cell handover and channel tracking
+This README excerpts some details from a more extensive
+tutorial that is maintained at:
+<https://www.nsnam.org/documentation/latest/>
 
-* Simulation of core network elements (with also the MME as a real node)
+## Building ns-3
 
-## Installation
-This repository contains a complete ns-3 installation with the addition of the mmwave module. 
+The code for the framework and the default models provided
+by ns-3 is built as a set of libraries. User simulations
+are expected to be written as simple programs that make
+use of these ns-3 libraries.
 
-Use these commands to download and build `ns3-mmwave`:
+To build the set of default libraries and the example
+programs included in this package, you need to use the
+`ns3` tool. This tool provides a Waf-like API to the
+underlying CMake build manager.
+Detailed information on how to use `ns3` is included in the
+[quick start guide](doc/installation/source/quick-start.rst).
+
+Before building ns-3, you must configure it.
+This step allows the configuration of the build options,
+such as whether to enable the examples, tests and more.
+
+To configure ns-3 with examples and tests enabled,
+run the following command on the ns-3 main directory:
+
+```shell
+./ns3 configure --enable-examples --enable-tests
 ```
-git clone https://github.com/nyuwireless-unipd/ns3-mmwave.git
-cd ns3-mmwave
-./ns3 configure --disable-python --enable-examples && ./ns3 build
+
+Then, build ns-3 by running the following command:
+
+```shell
+./ns3 build
 ```
 
-## Usage example
-You can use the following command to run the `mmwave-simple-epc` example. 
+By default, the build artifacts will be stored in the `build/` directory.
+
+### Supported Platforms
+
+The current codebase is expected to build and run on the
+set of platforms listed in the [release notes](RELEASE_NOTES.md)
+file.
+
+Other platforms may or may not work: we welcome patches to
+improve the portability of the code to these other platforms.
+
+## Testing ns-3
+
+ns-3 contains test suites to validate the models and detect regressions.
+To run the test suite, run the following command on the ns-3 main directory:
+
+```shell
+./test.py
 ```
-./ns3 run mmwave-simple-epc
+
+More information about ns-3 tests is available in the
+[test framework](doc/manual/source/test-framework.rst) section of the manual.
+
+## Running ns-3
+
+On recent Linux systems, once you have built ns-3 (with examples
+enabled), it should be easy to run the sample programs with the
+following command, such as:
+
+```shell
+./ns3 run simple-global-routing
 ```
-Other examples are included in `src/mmwave/examples/`
 
-## Documentation
-The documentation of this module is available at [this link](./src/mmwave/doc/mmwave-doc.md).
+That program should generate a `simple-global-routing.tr` text
+trace file and a set of `simple-global-routing-xx-xx.pcap` binary
+PCAP trace files, which can be read by `tcpdump -n -tt -r filename.pcap`.
+The program source can be found in the `examples/routing` directory.
 
-## Related modules
-- MilliCar is an ns-3 module for the simulation of mmWave NR V2X networks. Check [this repo](https://github.com/signetlabdei/millicar) for further details.
-- A seperate module is being developed for [mmWave UE Energy Consumption](https://github.com/arghasen10/mmwave-energy "mmwave-energy"). You can use this module for analyzing 
-Energy Consumption behaviour of mmwave UE. Check this repository for further details.
-- `ns3-mmwave-iab` is an extended version of `ns3-mmWave` adding wireless relaying capabilities to an ns-3 NetDevice, and the possibility of simulating in-band relaying at mmWave frequencies. Check [this repo](https://github.com/signetlabdei/ns3-mmwave-iab) for further details.
+## Running ns-3 from Python
 
-## References 
-The following papers describe in detail the features implemented in the mmWave
-module:
-- [End-to-End Simulation of 5G mmWave Networks](https://ieeexplore.ieee.org/document/8344116/ "comst paper") is a comprehensive tutorial with a detailed description of the whole module. We advise the researchers interested in this module to start reading from this paper;
-- [Integration of Carrier Aggregation and Dual Connectivity for the ns-3 mmWave Module](https://arxiv.org/abs/1802.06706 "wns3 2018") describes the Carrier Aggregation implementation;
-- [Implementation of A Spatial Channel Model for ns-3](https://arxiv.org/abs/2002.09341 "wns3 2020") describes the integration of the spatial channel model based on the 3GPP specifications TR 38.901 V15.0.0;
-- [Performance Comparison of Dual Connectivity and Hard Handover for LTE-5G Tight Integration](https://arxiv.org/abs/1607.05425 "simutools paper") describes the Dual Connectivity feature.
+If you do not plan to modify ns-3 upstream modules, you can get
+a pre-built version of the ns-3 python bindings.
 
-These other papers describe features that were implemented in older releases: 
-- [ns-3 Implementation of the 3GPP MIMO Channel Model for Frequency Spectrum above 6 GHz](https://dl.acm.org/citation.cfm?id=3067678 "wns3 2017") describes the implementation of the 3GPP channel model based on TR 38.900;
-- [Multi-Sector and Multi-Panel Performance in 5G mmWave Cellular Networks](https://arxiv.org/abs/1808.04905 "globecom2018") describes the multi-sector addition to the 3GPP channel model;
+```shell
+pip install --user ns3
+```
 
-If you use this module in your research, please cite:
+If you do not have `pip`, check their documents
+on [how to install it](https://pip.pypa.io/en/stable/installation/).
 
-M. Mezzavilla, M. Zhang, M. Polese, R. Ford, S. Dutta, S. Rangan, M. Zorzi, _"End-to-End Simulation of 5G mmWave Networks,"_ in IEEE Communications Surveys & Tutorials, vol. 20, no. 3, pp. 2237-2263, thirdquarter 2018. [bibtex available here](https://ieeexplore.ieee.org/document/8344116/)
+After installing the `ns3` package, you can then create your simulation python script.
+Below is a trivial demo script to get you started.
 
-## Future work
-We are actively developing new features for the mmWave module, including:
-- 3GPP NR beam tracking
-- 3GPP NR Integrated Access and Backhaul feature (see [this repo](https://github.com/signetlabdei/ns3-mmwave-iab) for more details)
+```python
+from ns import ns
 
-## About
-This module is being developed by [NYU Wireless](http://wireless.engineering.nyu.edu/) and the [University of Padova](http://mmwave.dei.unipd.it/).
-This  work  was  supported  in  part by  the  U.S.  Department  of  Commerce  National  Institute  of  Standards  and Technology through the Project “An End-to-End Research Platform for Public Safety  Communications  above  6  GHz”  under  Award  70NANB17H16.
+ns.LogComponentEnable("Simulator", ns.LOG_LEVEL_ALL)
 
+ns.Simulator.Stop(ns.Seconds(10))
+ns.Simulator.Run()
+ns.Simulator.Destroy()
+```
 
+The simulation will take a while to start, while the bindings are loaded.
+The script above will print the logging messages for the called commands.
 
-<!-- The new-handover branch offers integration between LTE and mmWave and dual connectivity features.
- -->
+Use `help(ns)` to check the prototypes for all functions defined in the
+ns3 namespace. To get more useful results, query specific classes of
+interest and their functions e.g., `help(ns.Simulator)`.
 
-## Authors ##
+Smart pointers `Ptr<>` can be differentiated from objects by checking if
+`__deref__` is listed in `dir(variable)`. To dereference the pointer,
+use `variable.__deref__()`.
 
-The ns-3 mmWave module is the result of the development effort carried out by different people. The main contributors are: 
-- Tommaso Zugno, University of Padova
-- Michele Polese, University of Padova
-- Matteo Pagin, University of Padova
-- Mattia Lecci, University of Padova
-- Matteo Drago, University of Padova
-- Mattia Rebato, University of Padova
-- Menglei Zhang, NYU Wireless
-- Marco Giordani, University of Padova
-- Marco Mezzavilla, NYU Wireless
-- Sourjya Dutta, NYU Wireless
-- Russell Ford, NYU Wireless
-- Gabriel Arrobo, Intel
+Most ns-3 simulations are written in C++ and the documentation is
+oriented towards C++ users. The ns-3 tutorial programs (`first.cc`,
+`second.cc`, etc.) have Python equivalents, if you are looking for
+some initial guidance on how to use the Python API. The Python
+API may not be as full-featured as the C++ API, and an API guide
+for what C++ APIs are supported or not from Python do not currently exist.
+The project is looking for additional Python maintainers to improve
+the support for future Python users.
 
-## License ##
+## ns-3 Documentation
 
-This software is licensed under the terms of the GNU GPLv2, as like as ns-3. See the LICENSE file for more details.
+Once you have verified that your build of ns-3 works by running
+the `simple-global-routing` example as outlined in the [running ns-3](#running-ns-3)
+section, it is quite likely that you will want to get started on reading
+some ns-3 documentation.
+
+All of that documentation should always be available from
+the ns-3 website: <https://www.nsnam.org/documentation/>.
+
+This documentation includes:
+
+* a tutorial
+* a reference manual
+* models in the ns-3 model library
+* a wiki for user-contributed tips: <https://www.nsnam.org/wiki/>
+* API documentation generated using doxygen: this is
+  a reference manual, most likely not very well suited
+  as introductory text:
+  <https://www.nsnam.org/doxygen/index.html>
+
+## Working with the Development Version of ns-3
+
+If you want to download and use the development version of ns-3, you
+need to use the tool `git`. A quick and dirty cheat sheet is included
+in the manual, but reading through the Git
+tutorials found in the Internet is usually a good idea if you are not
+familiar with it.
+
+If you have successfully installed Git, you can get
+a copy of the development version with the following command:
+
+```shell
+git clone https://gitlab.com/nsnam/ns-3-dev.git
+```
+
+However, we recommend to follow the GitLab guidelines for starters,
+that includes creating a GitLab account, forking the ns-3-dev project
+under the new account's name, and then cloning the forked repository.
+You can find more information in the [manual](https://www.nsnam.org/docs/manual/html/working-with-git.html).
+
+## Contributing to ns-3
+
+The process of contributing to the ns-3 project varies with
+the people involved, the amount of time they can invest
+and the type of model they want to work on, but the current
+process that the project tries to follow is described in the
+[contributing code](https://www.nsnam.org/developers/contributing-code/)
+website and in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+## Reporting Issues
+
+If you would like to report an issue, you can open a new issue in the
+[GitLab issue tracker](https://gitlab.com/nsnam/ns-3-dev/-/issues).
+Before creating a new issue, please check if the problem that you are facing
+was already reported and contribute to the discussion, if necessary.
+
+## ns-3 App Store
+
+The official [ns-3 App Store](https://apps.nsnam.org/) is a centralized directory
+listing third-party modules for ns-3 available on the Internet.
+
+More information on how to submit an ns-3 module to the ns-3 App Store is available
+in the [ns-3 App Store documentation](https://www.nsnam.org/docs/contributing/html/external.html).

@@ -437,7 +437,7 @@ MinstrelHtWifiManager::CalculateMpduTxDuration(Ptr<WifiPhy> phy,
     txvector.SetGuardInterval(gi);
     txvector.SetChannelWidth(chWidth);
     txvector.SetNess(0);
-    txvector.SetStbc(0);
+    txvector.SetStbc(false);
     txvector.SetMode(mode);
     txvector.SetPreambleType(WIFI_PREAMBLE_HT_MF);
     return WifiPhy::CalculatePhyPreambleAndHeaderDuration(txvector) +
@@ -480,7 +480,7 @@ WifiRemoteStation*
 MinstrelHtWifiManager::DoCreateStation() const
 {
     NS_LOG_FUNCTION(this);
-    MinstrelHtWifiRemoteStation* station = new MinstrelHtWifiRemoteStation();
+    auto station = new MinstrelHtWifiRemoteStation();
 
     // Initialize variables common to both stations.
     station->m_nextStatsUpdate = Simulator::Now() + m_updateStats;
@@ -511,20 +511,9 @@ MinstrelHtWifiManager::DoCreateStation() const
     station->m_ampduLen = 0;
     station->m_ampduPacketCount = 0;
 
-    // If the device supports HT
-    if (GetHtSupported())
-    {
-        /**
-         * Assume the station is HT.
-         * When correct information available it will be checked.
-         */
-        station->m_isHt = true;
-    }
-    // Use the variable in the station to indicate that the device do not support HT
-    else
-    {
-        station->m_isHt = false;
-    }
+    // Use the variable in the station to indicate whether the device supports HT.
+    // When correct information available it will be checked.
+    station->m_isHt = GetHtSupported();
 
     return station;
 }
@@ -583,7 +572,7 @@ void
 MinstrelHtWifiManager::DoReportRtsFailed(WifiRemoteStation* st)
 {
     NS_LOG_FUNCTION(this << st);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
     CheckInit(station);
     if (!station->m_initialized)
     {
@@ -606,7 +595,7 @@ void
 MinstrelHtWifiManager::DoReportFinalRtsFailed(WifiRemoteStation* st)
 {
     NS_LOG_FUNCTION(this << st);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
     NS_LOG_DEBUG("Final RTS failed");
     CheckInit(station);
     if (!station->m_initialized)
@@ -620,7 +609,7 @@ void
 MinstrelHtWifiManager::DoReportDataFailed(WifiRemoteStation* st)
 {
     NS_LOG_FUNCTION(this << st);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     CheckInit(station);
     if (!station->m_initialized)
@@ -655,7 +644,7 @@ MinstrelHtWifiManager::DoReportDataOk(WifiRemoteStation* st,
                                       uint8_t dataNss)
 {
     NS_LOG_FUNCTION(this << st << ackSnr << ackMode << dataSnr << dataChannelWidth << +dataNss);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     CheckInit(station);
     if (!station->m_initialized)
@@ -727,7 +716,7 @@ void
 MinstrelHtWifiManager::DoReportFinalDataFailed(WifiRemoteStation* st)
 {
     NS_LOG_FUNCTION(this << st);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     CheckInit(station);
     if (!station->m_initialized)
@@ -781,7 +770,7 @@ MinstrelHtWifiManager::DoReportAmpduTxStatus(WifiRemoteStation* st,
 {
     NS_LOG_FUNCTION(this << st << nSuccessfulMpdus << nFailedMpdus << rxSnr << dataSnr
                          << dataChannelWidth << +dataNss);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     CheckInit(station);
     if (!station->m_initialized)
@@ -1034,7 +1023,7 @@ WifiTxVector
 MinstrelHtWifiManager::DoGetDataTxVector(WifiRemoteStation* st, uint16_t allowedWidth)
 {
     NS_LOG_FUNCTION(this << st << allowedWidth);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     if (!station->m_initialized)
     {
@@ -1107,7 +1096,7 @@ WifiTxVector
 MinstrelHtWifiManager::DoGetRtsTxVector(WifiRemoteStation* st)
 {
     NS_LOG_FUNCTION(this << st);
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     if (!station->m_initialized)
     {
@@ -1193,7 +1182,7 @@ MinstrelHtWifiManager::DoNeedRetransmission(WifiRemoteStation* st,
 {
     NS_LOG_FUNCTION(this << st << packet << normally);
 
-    MinstrelHtWifiRemoteStation* station = static_cast<MinstrelHtWifiRemoteStation*>(st);
+    auto station = static_cast<MinstrelHtWifiRemoteStation*>(st);
 
     CheckInit(station);
     if (!station->m_initialized)
@@ -2240,33 +2229,24 @@ MinstrelHtWifiManager::GetLowestIndex(MinstrelHtWifiRemoteStation* station, uint
 WifiModeList
 MinstrelHtWifiManager::GetHeDeviceMcsList() const
 {
-    WifiModeList heMcsList;
-    for (const auto& mode : GetPhy()->GetMcsList(WIFI_MOD_CLASS_HE))
-    {
-        heMcsList.push_back(mode);
-    }
+    const auto& mcsList = GetPhy()->GetMcsList(WIFI_MOD_CLASS_HE);
+    WifiModeList heMcsList(mcsList.begin(), mcsList.end());
     return heMcsList;
 }
 
 WifiModeList
 MinstrelHtWifiManager::GetVhtDeviceMcsList() const
 {
-    WifiModeList vhtMcsList;
-    for (const auto& mode : GetPhy()->GetMcsList(WIFI_MOD_CLASS_VHT))
-    {
-        vhtMcsList.push_back(mode);
-    }
+    const auto& mcsList = GetPhy()->GetMcsList(WIFI_MOD_CLASS_VHT);
+    WifiModeList vhtMcsList(mcsList.begin(), mcsList.end());
     return vhtMcsList;
 }
 
 WifiModeList
 MinstrelHtWifiManager::GetHtDeviceMcsList() const
 {
-    WifiModeList htMcsList;
-    for (const auto& mode : GetPhy()->GetMcsList(WIFI_MOD_CLASS_HT))
-    {
-        htMcsList.push_back(mode);
-    }
+    const auto& mcsList = GetPhy()->GetMcsList(WIFI_MOD_CLASS_HT);
+    WifiModeList htMcsList(mcsList.begin(), mcsList.end());
     return htMcsList;
 }
 

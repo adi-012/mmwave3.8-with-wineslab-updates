@@ -119,12 +119,47 @@ class HeRu
          * \return true if this RU differs from the given RU, false otherwise
          */
         bool operator!=(const RuSpec& other) const;
+        /**
+         * Compare this RU to the given RU.
+         *
+         * \param other the given RU
+         * \return true if this RU is smaller than the given RU, false otherwise
+         */
+        bool operator<(const RuSpec& other) const;
 
       private:
         RuType m_ruType;     //!< RU type
         std::size_t m_index; /**< RU index (starting at 1) as defined by Tables 27-7
                                   to 27-9 of 802.11ax D8.0 */
         bool m_primary80MHz; //!< true if the RU is allocated in the primary 80MHz channel
+    };
+
+    /**
+     * Struct providing a function call operator to compare two RUs.
+     */
+    struct RuSpecCompare
+    {
+        /**
+         * Constructor.
+         *
+         * \param channelWidth the channel width in MHz
+         * \param p20Index the index of the primary20 channel
+         */
+        RuSpecCompare(uint16_t channelWidth, uint8_t p20Index);
+        /**
+         * Function call operator.
+         *
+         * \param lhs left hand side RU
+         * \param rhs right hand side RU
+         * \return true if the left hand side RU has its leftmost tone at a lower
+         *         frequency than the leftmost tone of the right hand side RU,
+         *         false otherwise
+         */
+        bool operator()(const RuSpec& lhs, const RuSpec& rhs) const;
+
+      private:
+        uint16_t m_channelWidth; ///< The channel width in MHz
+        uint8_t m_p20Index;      ///< Primary20 channel index
     };
 
     /**

@@ -256,7 +256,7 @@ It is strongly suggested to rebase your branch on top of upstream/master (or mas
 This helps reviewing the code changes proposed in the branch. merge it without conflicts, and it increase the speed of the GitLab CI.
 
 GitLab CI (Continuous Integration)
-+++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++
 
 GitLab provides a CI (Continuous Integration) feature. Shortly put, after every push the code is built and tests are run in one of the GitLab servers.
 
@@ -368,7 +368,7 @@ We change the VERSION field from '3-dev' to '3.34'::
   $ cat VERSION
   3.34
 
-We next change the file conf.py in the contributing, tutorial, manual, and models directories
+We next change the file conf.py in the contributing, installation, tutorial, manual, and models directories
 to change the strings 'ns-3-dev' to ns-3.34.
 
 When you are done, the 'git diff --stat' command should show:
@@ -377,10 +377,11 @@ When you are done, the 'git diff --stat' command should show:
 
   VERSION                         | 2 +-
   doc/contributing/source/conf.py | 4 ++--
+  doc/installation/source/conf.py | 4 ++--
   doc/manual/source/conf.py       | 4 ++--
   doc/models/source/conf.py       | 4 ++--
   doc/tutorial/source/conf.py     | 4 ++--
-  5 files changed, 9 insertions(+), 9 deletions(-)
+  6 files changed, 11 insertions(+), 11 deletions(-)
 
 Make a commit of these files:
 
@@ -403,6 +404,8 @@ Next, make the following change to RELEASE_NOTES.md and commit it:
   +<https://www.nsnam.org/release/ns-allinone-3.34.tar.bz2>
 
 Commit this change:
+
+::
 
   $ git commit -m"Update availability in RELEASE_NOTES.md" RELEASE_NOTES.md
 

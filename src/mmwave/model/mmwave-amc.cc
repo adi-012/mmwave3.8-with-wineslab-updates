@@ -80,7 +80,7 @@ MmWaveAmc::GetTypeId(void)
             .AddAttribute("AmcModel",
                           "AMC model used to assign CQI",
                           EnumValue(MmWaveAmc::ErrorModel),
-                          MakeEnumAccessor(&MmWaveAmc::SetAmcModel, &MmWaveAmc::GetAmcModel),
+                          MakeEnumAccessor<AmcModel>(&MmWaveAmc::SetAmcModel, &MmWaveAmc::GetAmcModel),
                           MakeEnumChecker(MmWaveAmc::ErrorModel,
                                           "ErrorModel",
                                           MmWaveAmc::ShannonModel,

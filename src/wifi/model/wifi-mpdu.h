@@ -28,6 +28,7 @@
 #include "wifi-mac-queue-elem.h"
 
 #include "ns3/packet.h"
+#include "ns3/simulator.h"
 
 #include <list>
 #include <optional>
@@ -64,8 +65,9 @@ class WifiMpdu : public SimpleRefCount<WifiMpdu>
      * \brief Create a Wifi MAC queue item containing a packet and a Wifi MAC header.
      * \param p the const packet included in the created item.
      * \param header the Wifi MAC header included in the created item.
+     * \param stamp the timestamp to associate with the MPDU
      */
-    WifiMpdu(Ptr<const Packet> p, const WifiMacHeader& header);
+    WifiMpdu(Ptr<const Packet> p, const WifiMacHeader& header, Time stamp = Simulator::Now());
 
     virtual ~WifiMpdu();
 
@@ -129,7 +131,9 @@ class WifiMpdu : public SimpleRefCount<WifiMpdu>
     /**
      * \brief Aggregate the MSDU contained in the given MPDU to this MPDU (thus
      *        constituting an A-MSDU). Note that the given MPDU cannot contain
-     *        an A-MSDU.
+     *        an A-MSDU. If the given MPDU is a null pointer, the effect of this
+     *        call is to add only an A-MSDU subframe header, thus producing an A-MSDU
+     *        containing a single MSDU.
      * \param msdu the MPDU containing the MSDU to aggregate
      */
     void Aggregate(Ptr<const WifiMpdu> msdu);
@@ -182,6 +186,10 @@ class WifiMpdu : public SimpleRefCount<WifiMpdu>
      * \return the AC of the queue this item is stored into
      */
     AcIndex GetQueueAc() const;
+    /**
+     * \return the time this MPDU was constructed
+     */
+    Time GetTimestamp() const;
     /**
      * \return the expiry time of this MPDU
      */
@@ -278,6 +286,7 @@ class WifiMpdu : public SimpleRefCount<WifiMpdu>
     struct OriginalInfo
     {
         Ptr<const Packet> m_packet;        //!< MSDU or A-MSDU contained in this queue item
+        Time m_timestamp;                  //!< construction time
         DeaggregatedMsdus m_msduList;      //!< list of aggregated MSDUs included in this MPDU
         std::optional<Iterator> m_queueIt; //!< Queue iterator pointing to this MPDU, if queued
         bool m_seqNoAssigned;              //!< whether a sequence number has been assigned

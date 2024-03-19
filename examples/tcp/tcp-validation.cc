@@ -663,6 +663,9 @@ main(int argc, char* argv[])
     Config::SetDefault("ns3::TcpSocket::InitialCwnd", UintegerValue(10));
     Config::SetDefault("ns3::TcpL4Protocol::RecoveryType",
                        TypeIdValue(TcpPrrRecovery::GetTypeId()));
+    // Validation criteria were written for TCP Cubic without Reno-friendly behavior, so disable it
+    // for these tests
+    Config::SetDefault("ns3::TcpCubic::TcpFriendliness", BooleanValue(false));
 
     ////////////////////////////////////////////////////////////
     // command-line argument parsing                          //
@@ -746,7 +749,7 @@ main(int argc, char* argv[])
         firstTcpTypeId = TcpDctcp::GetTypeId();
         Config::SetDefault("ns3::CoDelQueueDisc::CeThreshold", TimeValue(ceThreshold));
         Config::SetDefault("ns3::FqCoDelQueueDisc::CeThreshold", TimeValue(ceThreshold));
-        if (queueUseEcn == false)
+        if (!queueUseEcn)
         {
             std::cout << "Warning: using DCTCP with queue ECN disabled" << std::endl;
         }
@@ -933,7 +936,7 @@ main(int argc, char* argv[])
         proto->SetAttribute("SocketType", TypeIdValue(secondTcpTypeId));
     }
 
-    // InternetStackHelper will install a base TrafficControLayer on the node,
+    // InternetStackHelper will install a base TrafficControlLayer on the node,
     // but the Ipv4AddressHelper below will install the default FqCoDelQueueDisc
     // on all single device nodes.  The below code overrides the configuration
     // that is normally done by the Ipv4AddressHelper::Install() method by

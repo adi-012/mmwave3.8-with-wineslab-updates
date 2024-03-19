@@ -226,9 +226,8 @@ AttributeIterator::DoIterate(Ptr<Object> object)
         NS_LOG_DEBUG("store " << tid.GetName());
         for (uint32_t i = 0; i < tid.GetAttributeN(); ++i)
         {
-            struct TypeId::AttributeInformation info = tid.GetAttribute(i);
-            const PointerChecker* ptrChecker =
-                dynamic_cast<const PointerChecker*>(PeekPointer(info.checker));
+            TypeId::AttributeInformation info = tid.GetAttribute(i);
+            const auto ptrChecker = dynamic_cast<const PointerChecker*>(PeekPointer(info.checker));
             if (ptrChecker != nullptr)
             {
                 NS_LOG_DEBUG("pointer attribute " << info.name);
@@ -246,7 +245,7 @@ AttributeIterator::DoIterate(Ptr<Object> object)
                 continue;
             }
             // attempt to cast to an object container
-            const ObjectPtrContainerChecker* vectorChecker =
+            const auto vectorChecker =
                 dynamic_cast<const ObjectPtrContainerChecker*>(PeekPointer(info.checker));
             if (vectorChecker != nullptr)
             {

@@ -1066,7 +1066,7 @@ UeManager::ForwardRlcBuffers(Ptr<LteRlc> rlc,
                               << " Size = " << txonBufferSize);
 
             Ptr<Packet> segmentedRlcsdu = rlcAm->GetSegmentedRlcsdu();
-            if (segmentedRlcsdu != NULL)
+            if (segmentedRlcsdu)
             {
                 segmentedRlcsdu->PeekHeader(pdcpHeader);
                 NS_LOG_DEBUG(this << "SegmentedRlcSdu = " << segmentedRlcsdu->GetSize()
@@ -1088,7 +1088,7 @@ UeManager::ForwardRlcBuffers(Ptr<LteRlc> rlc,
                  it != rlcAmTxedSduBuffer.end();
                  ++it)
             {
-                if ((*it) != NULL)
+                if ((*it))
                 {
                     (*it)->PeekHeader(pdcpHeader);
                     NS_LOG_DEBUG("rlcAmTxedSduBuffer SEQ = " << pdcpHeader.GetSequenceNumber()
@@ -1287,7 +1287,7 @@ UeManager::SendData(uint8_t bid, Ptr<Packet> p)
         if (it != m_drbMap.end())
         {
             Ptr<LteDataRadioBearerInfo> bearerInfo = GetDataRadioBearerInfo(drbid);
-            if (bearerInfo != NULL)
+            if (bearerInfo)
             {
                 LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider();
                 pdcpSapProvider->TransmitPdcpSdu(params);
@@ -3115,7 +3115,7 @@ LteEnbRrc::GetTypeId(void)
             .AddAttribute("EpsBearerToRlcMapping",
                           "Specify which type of RLC will be used for each type of EPS bearer. ",
                           EnumValue(RLC_SM_ALWAYS),
-                          MakeEnumAccessor(&LteEnbRrc::m_epsBearerToRlcMapping),
+                          MakeEnumAccessor<LteEpsBearerToRlcMapping_t>(&LteEnbRrc::m_epsBearerToRlcMapping),
                           MakeEnumChecker(RLC_SM_ALWAYS,
                                           "RlcSmAlways",
                                           RLC_UM_ALWAYS,
@@ -3260,7 +3260,7 @@ LteEnbRrc::GetTypeId(void)
             .AddAttribute("SecondaryCellHandoverMode",
                           "Select the secondary cell handover mode",
                           EnumValue(DYNAMIC_TTT),
-                          MakeEnumAccessor(&LteEnbRrc::m_handoverMode),
+                          MakeEnumAccessor<HandoverMode>(&LteEnbRrc::m_handoverMode),
                           MakeEnumChecker(FIXED_TTT,
                                           "FixedTtt",
                                           DYNAMIC_TTT,
